@@ -1,4 +1,5 @@
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
+const LSP7DigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json');
 require('dotenv').config();
 const Web3 = require('web3');
 const yargs = require('yargs');
@@ -45,7 +46,25 @@ async function deploy(controller_addresses) {
             }
         }
     );
-      console.log(up);
+    console.log(up);
+    return up;
+}
+
+async function deployLSP7(owner_address) {
+    const lsp7 = await lspFactory.LSP7DigitalAsset.deploy({
+        name: "Some LSP7",
+        symbol: "TKN",
+        ownerAddress: owner_address, // Account which will own the Token Contract
+        isNFT: false,
+    })
+    
+    const myNFT = new web3.eth.Contract(
+        LSP7DigitalAsset.abi,
+        myDigitalAsset.LSP7DigitalAsset.address
+    );
+    
+    const totalSupply = lsp7.methods.totalSupply().call()
+    return totalSupply;
 }
 
 async function run() {
@@ -55,7 +74,9 @@ async function run() {
         console.log('Go get some gas');
         return;
     }
-    deploy([process.env.ADDRESS]);
+    let up = await deploy([process.env.ADDRESS]);
+    let lsp7 = await deployLSP7(process.env.ADDRESS);
+    console.log(lsp7);
 }
 
 // const myUPAddress = myContracts.ERC725Account.address;
