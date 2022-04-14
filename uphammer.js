@@ -1,11 +1,21 @@
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
 require('dotenv').config();
 const Web3 = require('web3');
+const yargs = require('yargs');
+const schemas = require('./schemas.js').schemas;
+const lsp3Profile = require('./profiles.js').profile;
+
+var argv = yargs(process.argv.slice(2))
+    .usage('Usage: $0 [--proxies]')
+    .boolean(['proxies'])
+    .default('proxies', false)
+    .argv;
 
 const provider = 'https://rpc.l14.lukso.network'; // RPC url used to connect to the network
 
 const web3 = new Web3(provider);
 
+const DEPLOY_PROXY = argv.proxies
 
 const lspFactory = new LSPFactory(provider, {
   deployKey: process.env.PRIVATE_KEY, // Private key of the account which will deploy UPs
@@ -14,41 +24,28 @@ const lspFactory = new LSPFactory(provider, {
 // console.log(lspFactory);
 
 // Deploy LSP3 Account
-async function deploy() {
-    const myContracts = await lspFactory.LSP3UniversalProfile.deploy({
-        controllerAddresses: ['0x...'], // Address which will controll the UP
-        lsp3Profile: {
-          json: {
-            LSP3Profile: {
-              name: "My Universal Profile",
-              description: "My cool Universal Profile",
-              profileImage: [
-                {
-                  width: 500,
-                  height: 500,
-                  hashFunction: "keccak256(bytes)",
-                  // bytes32 hex string of the image hash
-                  hash: "0xfdafad027ecfe57eb4ad047b938805d1dec209d6e9f960fc320d7b9b11cbed14",
-                  url: "ipfs://QmPLqMFHxiUgYAom3Zg4SiwoxDaFcZpHXpCmiDzxrtjSGp",
-                },
-              ],
-              backgroundImage: [
-                {
-                  width: 500,
-                  height: 500,
-                  hashFunction: "keccak256(bytes)",
-                  // bytes32 hex string of the image hash
-                  hash: "0xfdafad027ecfe57eb4ad047b938805d1dec209d6e9f960fc320d7b9b11cbed14",
-                  url: "ipfs://QmPLqMFHxiUgYAom3Zg4SiwoxDaFcZpHXpCmiDzxrtjSGp",
-                },
-              ],
-              tags: ['Fashion', 'Design'],
-              links: [{ title: "My Website", url: "www.my-website.com" }],
-            },
-          },
-          url: "",
+async function deploy(controller_addresses) {
+    if (typeof(controller_addresses) === 'string') {
+        controller_addresses = [controller_addresses];
+    }
+    const up = await lspFactory.LSP3UniversalProfile.deploy(
+        {
+            controllerAddresses: controller_addresses, // Address which will controll the UP
+            lsp3Profile: lsp3Profile,
         },
-      });
+        {
+            ERC725Account: {
+                deployProxy: DEPLOY_PROXY,
+            },
+            UniversalReceiverDelegate: {
+                deployProxy: DEPLOY_PROXY,
+            },
+            KeyManager: {
+                deployProxy: DEPLOY_PROXY, 
+            }
+        }
+    );
+      console.log(up);
 }
 
 async function run() {
@@ -58,6 +55,7 @@ async function run() {
         console.log('Go get some gas');
         return;
     }
+    deploy([process.env.ADDRESS]);
 }
 
 // const myUPAddress = myContracts.ERC725Account.address;
