@@ -1,0 +1,15 @@
+{
+  "name": "uphammer",
+  "version": "1.0.0",
+  "description": "Stress Testing for Lukso l14/l16 networks",
+  "main": "uphammer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Justin Regele",
+  "license": "ISC",
+  "dependencies": {
+    "@lukso/lsp-factory.js": "^2.1.0",
+    "dotenv": "^16.0.0"
+  }
+}
