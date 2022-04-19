@@ -1,9 +1,10 @@
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
-
+const schemas = require('./schemas.js').schemas;
+const lsp3Profile = require('./profiles.js').profile;
 const OPERATION_CALL = 0;
 
 // Deploy LSP3 Account
-async function deploy(lspFactory, controller_addresses) {
+async function deploy(lspFactory, controller_addresses, DEPLOY_PROXY) {
     if (typeof(controller_addresses) === 'string') {
         controller_addresses = [controller_addresses];
     }
@@ -24,7 +25,6 @@ async function deploy(lspFactory, controller_addresses) {
             }
         }
     );
-    console.log(up);
     return up;
 }
 
@@ -62,7 +62,7 @@ async function mint(lsp7, up_address, amount, up, EOA) {
 
     
     let totalSupply = await lsp7.methods.totalSupply().call()
-    console.log(`[+] Minted ${totalSupply} tokens`);
+    console.log(`[+] Minted ${totalSupply} tokens to ${lsp7._address}`);
 }
 
 module.exports = {
