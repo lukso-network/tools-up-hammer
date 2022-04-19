@@ -9,12 +9,14 @@ async function loop_deployUP(state) {
 }
 async function loop_deployLSP7(state) {
     console.log(`[+] Deploying new LSP7`);
-    let {lspFactory, web3, EOA, up} = state;
+    let {lspFactory, web3, EOA, up, lsp7} = state;
+    // this is a hack for the time being
+    if(Object.keys(lsp7).length > 0) { return; }
     let idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
     let erc725_address = Object.keys(up)[idx];
-    let lsp7 = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA);
-    console.log(`[+] LSP7 address:       ${lsp7._address}`);
-    state.lsp7[lsp7._address] = {
+    let lsp7_asset = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA);
+    console.log(`[+] LSP7 address:       ${lsp7_asset._address}`);
+    state.lsp7[lsp7_asset._address] = {
         owner: erc725_address,
         totalSupply: 0,
     }
