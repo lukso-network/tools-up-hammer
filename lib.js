@@ -65,8 +65,22 @@ async function mint(lsp7, up_address, amount, up, EOA) {
     console.log(`[+] Minted ${totalSupply} tokens to ${lsp7._address}`);
 }
 
+async function transfer(lsp7, _from, _to, amount, up, EOA ) {
+    // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
+    let targetPayload = await lsp7.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
+    
+    let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp7._address, 0, targetPayload).encodeABI();
+
+    await up.km.methods.execute(abiPayload).send({
+        from: EOA.address, 
+        gas: 5_000_000,
+        gasPrice: '1000000000',
+      });
+}
+
 module.exports = {
     mint,
     deploy,
-    deployLSP7
+    deployLSP7,
+    transfer
 }
