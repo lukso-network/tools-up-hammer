@@ -1,10 +1,21 @@
+const crypto = require('crypto');
+const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const schemas = require('./schemas.js').schemas;
 const lsp3Profile = require('./profiles.js').profile;
 const OPERATION_CALL = 0;
 
+function reinitLspFactory(lspFactory) {
+    lspFactory = new LSPFactory(lspFactory.options.provider, {
+        deployKey: process.env.PRIVATE_KEY, // Private key of the account which will deploy UPs
+        chainId: 22, // Chain Id of the network you want to connect to
+      });
+    return lspFactory;
+}
+
 // Deploy LSP3 Account
 async function deploy(lspFactory, controller_addresses, DEPLOY_PROXY) {
+    lspFactory = reinitLspFactory(lspFactory);
     if (typeof(controller_addresses) === 'string') {
         controller_addresses = [controller_addresses];
     }
@@ -29,6 +40,7 @@ async function deploy(lspFactory, controller_addresses, DEPLOY_PROXY) {
 }
 
 async function deployLSP7(lspFactory, web3, owner_address, EOA) {
+    lspFactory = reinitLspFactory(lspFactory);
     const digitalAsset = await lspFactory.LSP7DigitalAsset.deploy({
         name: "Some LSP7",
         symbol: "TKN",
@@ -70,17 +82,31 @@ async function transfer(lsp7, _from, _to, amount, up, EOA ) {
     let targetPayload = await lsp7.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
     
     let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp7._address, 0, targetPayload).encodeABI();
-
-    await up.km.methods.execute(abiPayload).send({
-        from: EOA.address, 
-        gas: 5_000_000,
-        gasPrice: '1000000000',
-      });
+    try {
+        await up.km.methods.execute(abiPayload).send({
+            from: EOA.address, 
+            gas: 5_000_000,
+            gasPrice: '1000000000',
+          });
+    } catch(e) {
+        throw(e);
+    }
+    
 }
 
+function randomIndex(obj) {
+    return crypto.randomBytes(1)[0] % Object.keys(obj).length;
+}
+
+function randomKey(obj) {
+    let idx = randomIndex(obj);
+    return Object.keys(obj)[idx];
+}
 module.exports = {
     mint,
     deploy,
     deployLSP7,
-    transfer
+    transfer,
+    randomIndex,
+    randomKey
 }
