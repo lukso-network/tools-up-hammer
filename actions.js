@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
+const LSP8Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP8Mintable.json');
 const mchammer = require('./lib');
 
 async function loop_deployUP(state) {
@@ -44,13 +45,22 @@ async function loop_deployLSP7(state) {
 }
 async function loop_deployLSP8(state) {
     console.log(`[+] Deploying new LSP8`);
+    let {lspFactory, web3, EOA, up, lsp7} = state;
+    let lsp8_asset, erc725_address;
+    erc725_address = mchammer.randomKey(up); 
+    lsp8_asset = await mchammer.deployLSP8(lspFactory, web3, erc725_address, EOA);
+    console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
+    state.lsp8[lsp8_asset._address] = {
+        owner: erc725_address,
+        totalSupply: 0,
+    } 
 }
 async function loop_mintLSP7(state) {
     console.log(`[+] Minting more LSP7`);
     let {web3, EOA, up, lsp7} = state;
     if(Object.keys(lsp7).length > 0) {
-        let idx = crypto.randomBytes(1)[0] % Object.keys(lsp7).length;
-        let lsp7_address = Object.keys(lsp7)[idx];
+        
+        let lsp7_address = mchammer.randomKey(lsp7);
         let erc725_address = lsp7[lsp7_address].owner;
 
         let mint_amt = 100;
@@ -60,11 +70,18 @@ async function loop_mintLSP7(state) {
         lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
         await mchammer.mint(lsp7_asset, erc725_address, mint_amt, {erc725, km}, EOA);
         state.lsp7[lsp7_address].totalSupply += mint_amt;
+    } else {
+        console.log('[!] No LSP7 to mint :(');
     }
     
 }
 async function loop_mintLSP8(state) {
-    console.log(`[+] Minting more LSP7`);
+    console.log(`[+] Minting more LSP8`);
+    if(Object.keys(state.lsp8).length > 0) {
+        await mchammer.doMint('lsp8', LSP8Mintable.abi, state);
+    } else {
+        console.log('[!] No LSP8 to Mint');
+    }
 }
 async function loop_transferLSP7(state) {
     console.log(`[+] Transfering LSP7`);
@@ -88,18 +105,7 @@ async function loop_transferLSP7(state) {
         }
         let sending_address = erc725_address;
         console.log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`);
-        // probably a much cleaner way to do the following
-        // let other_addresses = Object.keys(up).filter(addr => addr != sending_address);
-        // if (sender_balance === "0") {
-        //     for(let i=0; i<other_addresses.length; i++) {
-        //         let other_balance = await lsp7_asset.methods.balanceOf(other_addresses[i]).call();
-        //         if(other_balance !== "0") {
-        //             sending_address = other_addresses[i];
-        //             break;
-        //         }
-        //     }
-        // }
-        
+
         // with an unknown amount of UPs, select a destination randomly
         let recv_address = sending_address;
         while(recv_address === sending_address)
@@ -112,7 +118,7 @@ async function loop_transferLSP7(state) {
         console.log(`[+] Receiver will be ${recv_address}`);
         
         // fix amount at 100 so we don't exceed operator authorized amount
-        let amount = 100; //await lsp7_asset.methods.balanceOf(sending_address).call();
+        let amount = 100; 
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
@@ -123,6 +129,8 @@ async function loop_transferLSP7(state) {
         } catch(e) {
             console.log(e);
         }
+    } else {
+        console.log('[!] No LSP7 to Transfer');
     }
 }
 async function loop_transferLSP8(state) {

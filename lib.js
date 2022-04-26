@@ -1,6 +1,9 @@
 const crypto = require('crypto');
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
+const LSP8IdentifiableDigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP8IdentifiableDigitalAsset.json');
+const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
+const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const schemas = require('./schemas.js').schemas;
 const lsp3Profile = require('./profiles.js').profile;
 const OPERATION_CALL = 0;
@@ -39,6 +42,26 @@ async function deploy(lspFactory, controller_addresses, DEPLOY_PROXY) {
     return up;
 }
 
+async function deployLSP8(lspFactory, web3, owner_address, EOA) {
+    lspFactory = reinitLspFactory(lspFactory);
+
+    const lsp8_asset = await lspFactory.LSP8IdentifiableDigitalAsset.deploy({
+        name: "My token",
+        symbol: "TKN",
+        controllerAddress: owner_address, // Account which will own the Token Contract
+    })
+
+    const lsp8 = new web3.eth.Contract(
+        LSP8IdentifiableDigitalAsset.abi,
+        lsp8_asset.LSP8IdentifiableDigitalAsset.address,
+        {
+            from: EOA.address
+        }
+    );
+
+    return lsp8;
+}
+
 async function deployLSP7(lspFactory, web3, owner_address, EOA) {
     lspFactory = reinitLspFactory(lspFactory);
     const digitalAsset = await lspFactory.LSP7DigitalAsset.deploy({
@@ -59,12 +82,32 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA) {
     return lsp7;
 }
 
-//https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
-async function mint(lsp7, up_address, amount, up, EOA) {
+async function doMint(type, abi, state) {
+    let lsp = state[type];
+    let {up, EOA, web3} = state;
+    if(Object.keys(lsp).length > 0) {
+        
+        let asset_address = randomKey(lsp);
+        let erc725_address = lsp[asset_address].owner;
 
-    let targetPayload = await lsp7.methods.mint(up_address, amount, false, '0x').encodeABI();
+        let mint_amt = 100;
+
+        erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+        km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
+        let lsp_asset = new web3.eth.Contract(abi, asset_address);
+        await mint(lsp_asset, erc725_address, mint_amt, {erc725, km}, EOA);
+        state[type][asset_address].totalSupply += mint_amt;
+    } else {
+        console.log(`[!] No ${type} to mint :(`);
+    }
+}
+
+//https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
+async function mint(lsp, up_address, amount, up, EOA) {
+
+    let targetPayload = await lsp.methods.mint(up_address, amount, false, '0x').encodeABI();
     
-    let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp7._address, 0, targetPayload).encodeABI();
+    let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
     await up.km.methods.execute(abiPayload).send({
         from: EOA.address, 
@@ -73,8 +116,8 @@ async function mint(lsp7, up_address, amount, up, EOA) {
       });
 
     
-    let totalSupply = await lsp7.methods.totalSupply().call()
-    console.log(`[+] Minted ${totalSupply} tokens to ${lsp7._address}`);
+    let totalSupply = await lsp.methods.totalSupply().call()
+    console.log(`[+] Minted ${totalSupply} tokens to ${lsp._address}`);
 }
 
 async function transfer(lsp7, _from, _to, amount, up, EOA ) {
@@ -106,7 +149,9 @@ module.exports = {
     mint,
     deploy,
     deployLSP7,
+    deployLSP8,
     transfer,
     randomIndex,
-    randomKey
+    randomKey,
+    doMint
 }

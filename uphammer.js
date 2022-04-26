@@ -48,6 +48,7 @@ const lspFactory = new LSPFactory(provider, {
 let state = {
     up: {},
     lsp7: {},
+    lsp8: {},
     web3,
     lspFactory,
     DEPLOY_PROXY,
