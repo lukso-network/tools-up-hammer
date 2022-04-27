@@ -105,7 +105,8 @@ const dev_loop = [
     // actions.loop_deployLSP7,
     // actions.loop_mintLSP7,
     // actions.loop_deployLSP8,
-    // actions.loop_mintLSP8
+    // actions.loop_mintLSP8,
+    // actions.loop_transferLSP8
 ]
 
 async function loop() {

@@ -114,7 +114,7 @@ async function loop_transferLSP7(state) {
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         console.log(`[+] Transferring ${amount} of ${lsp7_asset._address} from ${sending_address} to ${recv_address}`);
         try {
-            await mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km}, EOA)
+            await mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA})
             console.log(`[+] Transfered complete`);
         } catch(e) {
             console.log(e);
@@ -125,6 +125,51 @@ async function loop_transferLSP7(state) {
 }
 async function loop_transferLSP8(state) {
     console.log(`[+] Transfering LSP8`);
+    let {web3, EOA, up, lsp8} = state;
+    if(Object.keys(lsp8).length > 0) {
+        let totalSupply = 0;
+        let lsp8_contract, lsp8_address;
+        // as long as one lsp8 assets has a totalSupply >= transfer amount, this won't get stuck
+        // need to ensure that condition is always met
+        while(totalSupply === 0) {
+            lsp8_address = mchammer.randomKey(lsp8);
+            totalSupply = lsp8[lsp8_address].totalSupply;  
+        }
+        lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);
+        
+        // select a random token from the supply
+        let tokenId = parseInt(mchammer.randomKey(Array.from({ length: totalSupply }))) + 1; // prevent id from being 0
+        let tokenIdBytes = web3.utils.toHex(tokenId);
+
+        // find out who owns it
+        let owner = await lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call();
+        console.log(`[+] Sender ${owner} owns ${tokenIdBytes} token`);
+
+        // select a random recipient
+        let recv_address = owner;
+        while(recv_address === owner)
+        {
+            // loop until we find an address that is not the sender
+            // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
+            // recv_address = Object.keys(up)[other_idx];
+            recv_address = mchammer.randomKey(up);
+        }
+        console.log(`[+] Receiver will be ${recv_address}`);
+
+        // send
+        erc725 = new web3.eth.Contract(UniversalProfile.abi, owner);
+        km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
+        console.log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`);
+        try {
+            await mchammer.transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA});
+            console.log(`[+] Transfered complete`);
+        } catch(e) {
+            console.log(e);
+        }
+    } else {
+        console.log('[!] No LSP8 to transfer');
+    }
+    
 }
 
 module.exports = {

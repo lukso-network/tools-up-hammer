@@ -131,14 +131,14 @@ async function mint(lsp, up_address, amt_or_id, up, EOA) {
     console.log(`[+] Minted ${totalSupply} tokens to ${lsp._address}`);
 }
 
-async function transfer(lsp7, _from, _to, amount, up, EOA ) {
+async function transfer(lsp, _from, _to, amount, up ) {
     // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
-    let targetPayload = await lsp7.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
+    let targetPayload = await lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
     
-    let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp7._address, 0, targetPayload).encodeABI();
+    let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
     try {
         await up.km.methods.execute(abiPayload).send({
-            from: EOA.address, 
+            from: up.EOA.address, 
             gas: 5_000_000,
             gasPrice: '1000000000',
           });
