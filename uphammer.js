@@ -100,9 +100,19 @@ const loop_actions = [
     actions.loop_transferLSP8
 ]
 
+// empty this if you want purely random operation
+const dev_loop = [
+    actions.loop_deployLSP8,
+    actions.loop_mintLSP8
+]
+
 async function loop() {
+    // predetermined dev loop
+    for(let i=0; i< dev_loop.length; i++) {
+        await dev_loop[i](state);
+    }
     while(true) {
-        let next = crypto.randomBytes(1)[0] % loop_actions.length
+        let next = mchammer.randomIndex(loop_actions); 
         await loop_actions[next](state);
     }
 }
