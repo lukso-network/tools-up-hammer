@@ -85,27 +85,38 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA) {
 async function doMint(type, abi, state) {
     let lsp = state[type];
     let {up, EOA, web3} = state;
+
     if(Object.keys(lsp).length > 0) {
         
         let asset_address = randomKey(lsp);
         let erc725_address = lsp[asset_address].owner;
 
-        let mint_amt = 100;
+
+        let mint_amt_or_id = 100;
+        if(type==='lsp8') {
+            // we need to mint an Identifier, not an amount
+            mint_amt_or_id = web3.utils.toHex(state.lsp8[asset_address].totalSupply + 1);
+        }
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         let lsp_asset = new web3.eth.Contract(abi, asset_address);
-        await mint(lsp_asset, erc725_address, mint_amt, {erc725, km}, EOA);
-        state[type][asset_address].totalSupply += mint_amt;
+        await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA);
+        if(type==='lsp7') {
+            state[type][asset_address].totalSupply += mint_amt_or_id;
+        } else {
+            state[type][asset_address].totalSupply += 1;
+        }
+        
     } else {
         console.log(`[!] No ${type} to mint :(`);
     }
 }
 
 //https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
-async function mint(lsp, up_address, amount, up, EOA) {
+async function mint(lsp, up_address, amt_or_id, up, EOA) {
 
-    let targetPayload = await lsp.methods.mint(up_address, amount, false, '0x').encodeABI();
+    let targetPayload = await lsp.methods.mint(up_address, amt_or_id, false, '0x').encodeABI();
     
     let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 

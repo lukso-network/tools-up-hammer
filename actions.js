@@ -52,7 +52,7 @@ async function loop_deployLSP8(state) {
     console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
     state.lsp8[lsp8_asset._address] = {
         owner: erc725_address,
-        totalSupply: 0,
+        totalSupply: 0
     } 
 }
 async function loop_mintLSP7(state) {
