@@ -59,17 +59,7 @@ async function loop_mintLSP7(state) {
     console.log(`[+] Minting more LSP7`);
     let {web3, EOA, up, lsp7} = state;
     if(Object.keys(lsp7).length > 0) {
-        
-        let lsp7_address = mchammer.randomKey(lsp7);
-        let erc725_address = lsp7[lsp7_address].owner;
-
-        let mint_amt = 100;
-
-        erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
-        km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
-        lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
-        await mchammer.mint(lsp7_asset, erc725_address, mint_amt, {erc725, km}, EOA);
-        state.lsp7[lsp7_address].totalSupply += mint_amt;
+        await mchammer.doMint('lsp7', LSP7Mintable.abi, state);
     } else {
         console.log('[!] No LSP7 to mint :(');
     }
