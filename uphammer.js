@@ -21,11 +21,11 @@ var argv = yargs(process.argv.slice(2))
         description: "l14 or l16 network, defaults to l16",
         default: '16'
         })
-    // .option('numups', {
-    //     alias: 'u',
-    //     description: "Number of UPs to deploy",
-    //     default: 2
-    // })
+    .option('numups', {
+        alias: 'u',
+        description: "Number of UPs to deploy",
+        default: 2
+    })
     .argv;
 
 
