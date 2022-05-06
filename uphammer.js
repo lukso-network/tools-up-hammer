@@ -47,10 +47,15 @@ const lspFactory = new LSPFactory(provider, {
   chainId: 22, // Chain Id of the network you want to connect to
 });
 
+
+
 let state = {
     up: {},
     lsp7: {},
     lsp8: {},
+    nonce: null,
+    droppedNonces: [],
+    txs: [],
     web3,
     lspFactory,
     DEPLOY_PROXY,
@@ -114,6 +119,9 @@ async function loop() {
 }
 
 async function deployActors() {
+    for(const action of cfg.dev_loop) {
+        await actions[action](state);
+    }
     while(true) {
         let next = mchammer.randomIndex(deploy_actions); 
         await deploy_actions[next](state);
@@ -155,11 +163,12 @@ async function start() {
         } 
         return;
     }
-
+    
+    state.nonce = await web3.eth.getTransactionCount(process.env.ADDRESS, "pending");
+    console.log(`[+] Nonce is ${state.nonce}`);
     await init(argv.numups);
     console.log(state);
     
-    // devLoop()
     runTransfers();
     deployActors();
 

@@ -31,7 +31,7 @@ async function loop_deployLSP7(state) {
         erc725_address = await lsp7_asset.methods.owner().call();
     } else {
         erc725_address = mchammer.randomKey(up); 
-        lsp7_asset = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA);
+        lsp7_asset = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA, state);
     }
     
     console.log(`[+] LSP7 address:       ${lsp7_asset._address}`);
@@ -94,11 +94,7 @@ async function do_transferLSP7(state, tx_amt_type) {
             totalSupply = await lsp7_asset.methods.totalSupply().call();    
         }
 
-        if(tx_amt_type === 'all') {
-            amount = totalSupply
-        } else {
-            amount = crypto.randomInt(parseInt(totalSupply));
-        }
+
         
         let sender_balance = "0";
         let erc725_address;
@@ -108,6 +104,12 @@ async function do_transferLSP7(state, tx_amt_type) {
         }
         let sending_address = erc725_address;
         console.log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`);
+
+        if(tx_amt_type === 'all') {
+            amount = totalSupply
+        } else {
+            amount = crypto.randomInt(parseInt(sender_balance));
+        }
 
         // with an unknown amount of UPs, select a destination randomly
         let recv_address = sending_address;
@@ -119,15 +121,12 @@ async function do_transferLSP7(state, tx_amt_type) {
             recv_address = mchammer.randomKey(up);
         }
         console.log(`[+] Receiver will be ${recv_address}`);
-        
-
-        // let amount = 100; 
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         console.log(`[+] Transferring ${amount} of ${lsp7_asset._address} from ${sending_address} to ${recv_address}`);
         try {
-            await mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA})
+            await mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state)
             console.log(`[+] Transfered complete`);
         } catch(e) {
             console.log(e);
@@ -176,7 +175,7 @@ async function loop_transferLSP8(state) {
         km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
         console.log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`);
         try {
-            await mchammer.transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA});
+            await mchammer.transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state);
             console.log(`[+] Transfered complete`);
         } catch(e) {
             console.log(e);
