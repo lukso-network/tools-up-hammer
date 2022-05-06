@@ -8,9 +8,11 @@ const Web3 = require('web3');
 const ethers = require("ethers");
 const yargs = require('yargs');
 const crypto = require('crypto');
+const delay = require('await-delay');
 
 const mchammer = require('./lib');
 const actions = require('./actions');
+const cfg = require("./config.json");
 
 var argv = yargs(process.argv.slice(2))
     .usage('Usage: $0 [--noproxies] [--network 14|16] [-u <number of UPs>')
@@ -90,37 +92,57 @@ async function init(num_to_deploy) {
  
 }
 
-const loop_actions = [
+const deploy_actions = [
     actions.loop_deployUP,
     actions.loop_deployLSP7,
     actions.loop_deployLSP8,
     actions.loop_mintLSP7,
     actions.loop_mintLSP8,
+]
+
+const transfer_actions = [
     actions.loop_transferLSP7,
+    actions.loop_transferAllLSP7,
     actions.loop_transferLSP8
-]
+];
 
-// empty this if you want purely random operation
-const dev_loop = [
-    // actions.loop_deployLSP7,
-    // actions.loop_mintLSP7,
-    // actions.loop_deployLSP8,
-    // actions.loop_mintLSP8,
-    // actions.loop_transferLSP8
-]
-
-async function loop() {
-    // predetermined dev loop
-    for(let i=0; i< dev_loop.length; i++) {
-        await dev_loop[i](state);
-    }
+async function loop() { 
+    console.log("[+] Entering endless loop");
     while(true) {
-        let next = mchammer.randomIndex(loop_actions); 
-        await loop_actions[next](state);
+
     }
 }
 
-async function run() {
+async function deployActors() {
+    while(true) {
+        let next = mchammer.randomIndex(deploy_actions); 
+        await deploy_actions[next](state);
+    }
+}
+
+async function devLoop() {
+    // predetermined dev loop
+    for(let i=0; i< cfg.dev_loop.length; i++) {
+        await dev_loop[i](state);
+    }
+}
+
+async function runTransfers() {
+    while(true) {
+        // pick task
+        // read let ups = []
+        // let tokens = []
+        // let nfts =  []
+    // check balance
+    // call transfer on token, throughb UP and keymanager
+    // with you own nonce++
+    let next = mchammer.randomIndex(transfer_actions); 
+    transfer_actions[next](state);
+    await delay(crypto.randomInt(cfg.maxDelay))
+    }
+}
+
+async function start() {
     console.log('[+] Checking balance...');
     let balance = await web3.eth.getBalance(process.env.ADDRESS);
     console.log(`[+] Balance: ${balance}`);
@@ -136,14 +158,15 @@ async function run() {
 
     await init(argv.numups);
     console.log(state);
-
-    await loop();
     
+    // devLoop()
+    runTransfers();
+    deployActors();
 
-    // mchammer.mint(lsp7, erc725_address, 100, {erc725, km}, EOA);
+    // loop();
     
 }
 
 // const myUPAddress = myContracts.ERC725Account.address;
 // console.log(muUPAddress);
-run();
+start();

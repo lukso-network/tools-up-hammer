@@ -133,7 +133,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA) {
 
 async function transfer(lsp, _from, _to, amount, up ) {
     // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
-    let targetPayload = await lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
+    let targetPayload = lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
     
     let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
     try {
@@ -149,7 +149,7 @@ async function transfer(lsp, _from, _to, amount, up ) {
 }
 
 function randomIndex(obj) {
-    return crypto.randomBytes(1)[0] % Object.keys(obj).length;
+    return crypto.randomInt(Object.keys(obj).length);
 }
 
 function randomKey(obj) {

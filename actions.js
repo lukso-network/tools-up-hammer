@@ -25,10 +25,7 @@ async function loop_deployLSP7(state) {
     console.log(`[+] Deploying new LSP7`);
     let {lspFactory, web3, EOA, up, lsp7} = state;
     let lsp7_asset, erc725_address;
-    // this is a hack for the time being
-    // if(Object.keys(lsp7).length > 0) { 
-    //     return; 
-    // } else 
+
     if(Object.keys(lsp7).length === 0 && process.env.LSP7_ADDRESS) {
         lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, process.env.LSP7_ADDRESS);
         erc725_address = await lsp7_asset.methods.owner().call();
@@ -73,10 +70,20 @@ async function loop_mintLSP8(state) {
         console.log('[!] No LSP8 to Mint');
     }
 }
+
 async function loop_transferLSP7(state) {
+    do_transferLSP7(state, undefined);
+}
+
+async function loop_transferAllLSP7(state) {
+    do_transferLSP7(state, 'all');
+}
+
+async function do_transferLSP7(state, tx_amt_type) {
     console.log(`[+] Transfering LSP7`);
     let {web3, EOA, up, lsp7} = state;
     if(Object.keys(lsp7).length > 0) {
+        let amount;
         let totalSupply = "0";
         let lsp7_asset;
         // as long as one lsp7 asset has a totalSupply >= transfer amount, this won't get stuck
@@ -85,6 +92,12 @@ async function loop_transferLSP7(state) {
             let lsp7_address = mchammer.randomKey(lsp7);
             lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
             totalSupply = await lsp7_asset.methods.totalSupply().call();    
+        }
+
+        if(tx_amt_type === 'all') {
+            amount = totalSupply
+        } else {
+            amount = crypto.randomInt(parseInt(totalSupply));
         }
         
         let sender_balance = "0";
@@ -107,8 +120,8 @@ async function loop_transferLSP7(state) {
         }
         console.log(`[+] Receiver will be ${recv_address}`);
         
-        // fix amount at 100 so we don't exceed operator authorized amount
-        let amount = 100; 
+
+        // let amount = 100; 
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
@@ -123,6 +136,8 @@ async function loop_transferLSP7(state) {
         console.log('[!] No LSP7 to Transfer');
     }
 }
+
+
 async function loop_transferLSP8(state) {
     console.log(`[+] Transfering LSP8`);
     let {web3, EOA, up, lsp8} = state;
@@ -179,5 +194,6 @@ module.exports = {
     loop_mintLSP7,
     loop_mintLSP8,
     loop_transferLSP7,
+    loop_transferAllLSP7,
     loop_transferLSP8
 }

@@ -1,0 +1,8 @@
+{
+    "maxDelay": 1000,
+    "dev_loop" : [
+        "actions.loop_deployLSP7",
+        "actions.loop_mintLSP7",
+        "actions.loop_transferLSP7"
+    ]
+}
