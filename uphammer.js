@@ -55,8 +55,14 @@ const lspFactory = new LSPFactory(provider, {
 
 let state = {
     up: {},
-    lsp7: {},
-    lsp8: {},
+    lsp7: {
+        transferable: false,
+        addresses: {}
+    },
+    lsp8: {
+        transferable: false,
+        addresses: {}
+    },
     nonce: null,
     droppedNonces: [],
     pendingTxs: [],

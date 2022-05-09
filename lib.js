@@ -131,26 +131,27 @@ async function doMint(type, abi, state) {
     let lsp = state[type];
     let {up, EOA, web3} = state;
 
-    if(Object.keys(lsp).length > 0) {
+    if(Object.keys(lsp.addresses).length > 0) {
         
-        let asset_address = randomKey(lsp);
-        let erc725_address = lsp[asset_address].owner;
+        let asset_address = randomKey(lsp.addresses);
+        let erc725_address = lsp.addresses[asset_address].owner;
 
 
         let mint_amt_or_id = 100;
         if(type==='lsp8') {
             // we need to mint an Identifier, not an amount
-            mint_amt_or_id = web3.utils.toHex(state.lsp8[asset_address].totalSupply + 1);
+            mint_amt_or_id = web3.utils.toHex(state.lsp8.addresses[asset_address].totalSupply + 1);
         }
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         let lsp_asset = new web3.eth.Contract(abi, asset_address);
         await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state);
+        state[type].transferable = true;
         if(type==='lsp7') {
-            state[type][asset_address].totalSupply += mint_amt_or_id;
+            state[type].addresses[asset_address].totalSupply += mint_amt_or_id;
         } else {
-            state[type][asset_address].totalSupply += 1;
+            state[type].addresses[asset_address].totalSupply += 1;
         }
         
     } else {
