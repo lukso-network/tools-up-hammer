@@ -6,11 +6,12 @@ const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/Universal
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const schemas = require('./schemas.js').schemas;
 const lsp3Profile = require('./profiles.js').profile;
+const config = require("./config.json");
 const OPERATION_CALL = 0;
 
 function reinitLspFactory(lspFactory) {
     lspFactory = new LSPFactory(lspFactory.options.provider, {
-        deployKey: process.env.PRIVATE_KEY, // Private key of the account which will deploy UPs
+        deployKey: config.wallets.deploy.privateKey, // Private key of the account which will deploy UPs
         chainId: 22, // Chain Id of the network you want to connect to
       });
     return lspFactory;
@@ -22,12 +23,43 @@ function incrementNonce(state) {
     return nonce;
 }
 
-// Deploy LSP3 Account
-async function deploy(lspFactory, controller_addresses, DEPLOY_PROXY) {
-    lspFactory = reinitLspFactory(lspFactory);
-    if (typeof(controller_addresses) === 'string') {
-        controller_addresses = [controller_addresses];
+async function initUP(state) {
+    let {lspFactory, web3 } = state;
+    let erc725_address, erc725;
+    let km_address, km;
+    let up, deployed;
+    if(config.presets.up.length > 0 && !state.up[config.presets.up[0].ERC725_ADDRESS]) {
+        console.log(`[+] Found UP addresses. Skipping deployments`);
+        erc725_address = config.presets.up[0].ERC725_ADDRESS;
+        km_address = config.presets.up[0].KEYMANAGER_ADDRESS;
+    } else if(config.presets.up.length > 1 && !state.up[config.presets.up[1].ERC725_ADDRESS]) {
+        console.log(`[+] Found Secondary UP. Skipping deployments`);
+        erc725_address = config.presets.up[1].ERC725_ADDRESS;
+        km_address = config.presets.up[1].KEYMANAGER_ADDRESS;
+    } else {
+        console.log(`[+] Deploying Profile`);
+        deployed = await deploy(lspFactory);
+        erc725_address = deployed.ERC725Account.address;
+        km_address = deployed.KeyManager.address;
     }
+    console.log(`[+] ERC725 address:     ${erc725_address}`);
+    console.log(`[+] KeyManager address: ${km_address}`);
+    erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+    km = new web3.eth.Contract(KeyManager.abi, km_address);
+    state.up[erc725_address] = {
+        erc725,
+        km
+    }
+}
+
+// Deploy LSP3 Account
+async function deploy(lspFactory) {
+    lspFactory = reinitLspFactory(lspFactory);
+
+    let controller_addresses = [
+        config.wallets.deploy.address,
+        config.wallets.transfer.address
+    ];
     const up = await lspFactory.LSP3UniversalProfile.deploy(
         {
             controllerAddresses: controller_addresses, // Address which will controll the UP
@@ -35,13 +67,13 @@ async function deploy(lspFactory, controller_addresses, DEPLOY_PROXY) {
         },
         {
             ERC725Account: {
-                deployProxy: DEPLOY_PROXY,
+                deployProxy: config.deployProxy,
             },
             UniversalReceiverDelegate: {
-                deployProxy: DEPLOY_PROXY,
+                deployProxy: config.deployProxy,
             },
             KeyManager: {
-                deployProxy: DEPLOY_PROXY, 
+                deployProxy: config.deployProxy, 
             }
         }
     );
@@ -51,20 +83,20 @@ async function deploy(lspFactory, controller_addresses, DEPLOY_PROXY) {
 async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
     lspFactory = reinitLspFactory(lspFactory);
 
-    let nonce = incrementNonce(state);
+    // let nonce = incrementNonce(state);
 
     const lsp8_asset = await lspFactory.LSP8IdentifiableDigitalAsset.deploy({
         name: "My token",
         symbol: "TKN",
         controllerAddress: owner_address, // Account which will own the Token Contract
-        nonce
+        // nonce
     })
 
     const lsp8 = new web3.eth.Contract(
         LSP8IdentifiableDigitalAsset.abi,
         lsp8_asset.LSP8IdentifiableDigitalAsset.address,
         {
-            from: EOA.address
+            from: EOA.deploy.address
         }
     );
 
@@ -74,21 +106,21 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
 async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
     lspFactory = reinitLspFactory(lspFactory);
     
-    let nonce = incrementNonce(state);
+    // let nonce = incrementNonce(state);
     
     const digitalAsset = await lspFactory.LSP7DigitalAsset.deploy({
         name: "Some LSP7",
         symbol: "TKN",
         controllerAddress: owner_address, // Account which will own the Token Contract
         isNFT: false,
-        nonce
+        // nonce
     })
     
     const lsp7 = new web3.eth.Contract(
         LSP7Mintable.abi,
         digitalAsset.LSP7DigitalAsset.address,
         {
-            from: EOA.address
+            from: EOA.deploy.address
         }
     );
     
@@ -136,7 +168,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
     let nonce = incrementNonce(state);
 
     await up.km.methods.execute(abiPayload).send({
-        from: EOA.address, 
+        from: EOA.transfer.address, 
         gas: 5_000_000,
         gasPrice: '1000000000',
         nonce
@@ -154,11 +186,11 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
     let nonce = incrementNonce(state);
 
     let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
-    
+
     console.log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`);
     try {
         up.km.methods.execute(abiPayload).send({
-            from: up.EOA.address, 
+            from: up.EOA.transfer.address, 
             gas: 5_000_000,
             gasPrice: '1000000000',
             nonce
@@ -191,5 +223,6 @@ module.exports = {
     transfer,
     randomIndex,
     randomKey,
-    doMint
+    doMint,
+    initUP,
 }

@@ -4,11 +4,12 @@ const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const LSP8Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP8Mintable.json');
 const mchammer = require('./lib');
+const config = require("./config.json");
 
 async function loop_deployUP(state) {
     console.log(`[+] Deploying new UP`);
-    let {lspFactory, web3, EOA, up, DEPLOY_PROXY} = state;
-    let deployed = await mchammer.deploy(lspFactory, process.env.ADDRESS, DEPLOY_PROXY);
+    let {lspFactory, web3, EOA, up} = state;
+    let deployed = await mchammer.deploy(lspFactory);
     let erc725_address = deployed.ERC725Account.address;
     let km_address = deployed.KeyManager.address;
     
@@ -26,8 +27,8 @@ async function loop_deployLSP7(state) {
     let {lspFactory, web3, EOA, up, lsp7} = state;
     let lsp7_asset, erc725_address;
 
-    if(Object.keys(lsp7).length === 0 && process.env.LSP7_ADDRESS) {
-        lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, process.env.LSP7_ADDRESS);
+    if(Object.keys(lsp7).length === 0 && config.presets.lsp7.length > 0) {
+        lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, config.presets.lsp7[0]);
         erc725_address = await lsp7_asset.methods.owner().call();
     } else {
         erc725_address = mchammer.randomKey(up); 

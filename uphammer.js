@@ -3,7 +3,7 @@ const LSP7DigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP7Digit
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
-require('dotenv').config();
+// require('dotenv').config();
 const Web3 = require('web3');
 const ethers = require("ethers");
 const yargs = require('yargs');
@@ -12,7 +12,7 @@ const delay = require('await-delay');
 
 const mchammer = require('./lib');
 const actions = require('./actions');
-const cfg = require("./config.json");
+const config = require("./config.json");
 
 var argv = yargs(process.argv.slice(2))
     .usage('Usage: $0 [--noproxies] [--network 14|16] [-u <number of UPs>')
@@ -34,17 +34,21 @@ var argv = yargs(process.argv.slice(2))
 const L16 = 'https://rpc.beta.l16.lukso.network/';
 const L14 = 'https://rpc.l14.lukso.network';
 
-const provider = (argv.network && parseInt(argv.network) === 14) ? L14 : L16; //'http://34.90.30.203:8545'; //; // RPC url used to connect to the network
+const provider = config.provider; // (argv.network && parseInt(argv.network) === 14) ? L14 : L16; //'http://34.90.30.203:8545'; //; // RPC url used to connect to the network
+console.log(`[+] Provider is ${provider}`);
+// web3 is used for transferring and minting, not deployments
+const web3 = new Web3(provider, config.wallets.transfer.privateKey);
+const EOA_transfer = web3.eth.accounts.wallet.add(config.wallets.transfer.privateKey);
 
-const web3 = new Web3(provider, process.env.PRIVATE_KEY);
-const EOA = web3.eth.accounts.wallet.add(process.env.PRIVATE_KEY);
+// EOA is used for deployments
+const EOA_deploy = web3.eth.accounts.wallet.add(config.wallets.deploy.privateKey);
 
 
 const DEPLOY_PROXY = argv.proxies
 
 const lspFactory = new LSPFactory(provider, {
-  deployKey: process.env.PRIVATE_KEY, // Private key of the account which will deploy UPs
-  chainId: 22, // Chain Id of the network you want to connect to
+  deployKey: config.wallets.deploy.privateKey, // Private key of the account which will deploy UPs
+  chainId: config.chainId, // Chain Id of the network you want to connect to
 });
 
 
@@ -60,40 +64,17 @@ let state = {
     web3,
     lspFactory,
     DEPLOY_PROXY,
-    EOA
+    EOA: {
+        deploy: EOA_deploy,
+        transfer: EOA_transfer
+    }
 }
 
-async function initUP(DEPLOY_PROXY) {
-    let erc725_address, erc725;
-    let km_address, km;
-    let up, deployed;
-    if(process.env.ERC725_ADDRESS && process.env.KEYMANAGER_ADDRESS && !state.up[process.env.ERC725_ADDRESS]) {
-        console.log(`[+] Found UP addresses. Skipping deployments`);
-        erc725_address = process.env.ERC725_ADDRESS;
-        km_address = process.env.KEYMANAGER_ADDRESS;
-    } else if(process.env.ERC725_ADDRESS_B && process.env.KEYMANAGER_ADDRESS_B && !state.up[process.env.ERC725_ADDRESS_B]) {
-            console.log(`[+] Found Secondary UP. Skipping deployments`);
-            erc725_address = process.env.ERC725_ADDRESS_B;
-            km_address = process.env.KEYMANAGER_ADDRESS_B;
-    } else {
-        console.log(`[+] Deploying Profile`);
-        deployed = await mchammer.deploy(lspFactory, [process.env.ADDRESS], DEPLOY_PROXY);
-        erc725_address = deployed.ERC725Account.address;
-        km_address = deployed.KeyManager.address;
-    }
-    console.log(`[+] ERC725 address:     ${erc725_address}`);
-    console.log(`[+] KeyManager address: ${km_address}`);
-    erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
-    km = new web3.eth.Contract(KeyManager.abi, km_address);
-    state.up[erc725_address] = {
-        erc725,
-        km
-    }
-}
+
 
 async function init(num_to_deploy) {
     for(let i=0; i < num_to_deploy; i++) {
-        await initUP(DEPLOY_PROXY);
+        await mchammer.initUP(state);
     }
  
 }
@@ -102,14 +83,14 @@ const deploy_actions = [
     actions.loop_deployUP,
     actions.loop_deployLSP7,
     actions.loop_deployLSP8,
-    actions.loop_mintLSP7,
-    actions.loop_mintLSP8,
 ]
 
 const transfer_actions = [
     actions.loop_transferLSP7,
     actions.loop_transferAllLSP7,
-    actions.loop_transferLSP8
+    actions.loop_transferLSP8,
+    actions.loop_mintLSP7,
+    actions.loop_mintLSP8,
 ];
 
 async function loop() { 
@@ -120,7 +101,7 @@ async function loop() {
 }
 
 async function deployActors() {
-    for(const action of cfg.dev_loop) {
+    for(const action of config.dev_loop) {
         await actions[action](state);
     }
     while(true) {
@@ -140,7 +121,7 @@ async function runTransfers() {
     // with you own nonce++
     let next = mchammer.randomIndex(transfer_actions); 
     transfer_actions[next](state);
-    await delay(crypto.randomInt(cfg.maxDelay))
+    await delay(crypto.randomInt(config.maxDelay))
     }
 }
 
@@ -152,23 +133,36 @@ async function checkPendingTx() {
     }
 }
 
-async function start() {
-    console.log('[+] Checking balance...');
-    let balance = await web3.eth.getBalance(process.env.ADDRESS);
+async function checkBalance(wallet) {
+    console.log(`[+] Checking ${wallet} balance...`);
+    if(config.wallets[wallet] === undefined) {
+        console.log(`[!] ${wallet} wallet is not properly configured`);
+    }
+    let address = config.wallets[wallet].address;
+    let balance = await web3.eth.getBalance(address);
     console.log(`[+] Balance: ${balance}`);
     if (balance === '0') {
-        console.log(`[!] Go get some gas for ${process.env.ADDRESS}`);
+        console.log(`[!] Go get some gas for ${config.wallets[wallet].address}`);
         if(provider === L14) {
             console.log('http://faucet.l14.lukso.network/');    
         } else {
             console.log('http://faucet.11111111.l16.lukso.network/');
         } 
-        return;
+        return false;
+    }
+    return true;
+}
+
+async function start() {
+    let deploy_balance = await checkBalance("deploy");
+    let transfer_balance = await checkBalance("transfer");
+    if(!deploy_balance || !transfer_balance) {
+        exit();
     }
     
-    state.nonce = await web3.eth.getTransactionCount(process.env.ADDRESS, "pending");
-    console.log(`[+] Nonce is ${state.nonce}`);
-    await init(argv.numups);
+    state.nonce = await web3.eth.getTransactionCount(config.wallets.transfer.address, "pending");
+    console.log(`[+] Transfer Wallet Nonce is ${state.nonce}`);
+    await init(config.initialUPs);
     console.log(state);
     
     
