@@ -154,7 +154,8 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
     let nonce = incrementNonce(state);
 
     let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
-
+    
+    console.log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`);
     try {
         up.km.methods.execute(abiPayload).send({
             from: up.EOA.address, 
@@ -163,12 +164,13 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
             nonce
           }).then((res) => {
             if(res) {
-                console.log(`[+] Tx: ${res.transactionHash}`);
-                state.txs.push(res.transactionHash);
+                console.log(`[+] Transfer complete`);
+                console.log(`[+] Tx: ${res.transactionHash} Nonce: ${nonce}`);
+                state.txs.push({nonce, tx: res.transactionHash});
             } 
           });
     } catch(e) {
-        throw(e);
+        console.log(e);
     }
     
 }

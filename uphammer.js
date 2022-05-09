@@ -55,6 +55,7 @@ let state = {
     lsp8: {},
     nonce: null,
     droppedNonces: [],
+    pendingTxs: [],
     txs: [],
     web3,
     lspFactory,
@@ -128,13 +129,6 @@ async function deployActors() {
     }
 }
 
-async function devLoop() {
-    // predetermined dev loop
-    for(let i=0; i< cfg.dev_loop.length; i++) {
-        await dev_loop[i](state);
-    }
-}
-
 async function runTransfers() {
     while(true) {
         // pick task
@@ -147,6 +141,14 @@ async function runTransfers() {
     let next = mchammer.randomIndex(transfer_actions); 
     transfer_actions[next](state);
     await delay(crypto.randomInt(cfg.maxDelay))
+    }
+}
+
+async function checkPendingTx() {
+    for(pendingTx in state.pendingTxs) {
+      const tx = web3.eth.getPendingTransacitons(pendingTx.hash)
+      if(!tx)
+        state.droppedNonces.push(pendingTx.nonce)
     }
 }
 
@@ -169,6 +171,7 @@ async function start() {
     await init(argv.numups);
     console.log(state);
     
+    
     runTransfers();
     deployActors();
 
@@ -176,6 +179,4 @@ async function start() {
     
 }
 
-// const myUPAddress = myContracts.ERC725Account.address;
-// console.log(muUPAddress);
 start();

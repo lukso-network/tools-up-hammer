@@ -42,10 +42,10 @@ async function loop_deployLSP7(state) {
 }
 async function loop_deployLSP8(state) {
     console.log(`[+] Deploying new LSP8`);
-    let {lspFactory, web3, EOA, up, lsp7} = state;
+    let {lspFactory, web3, EOA, up} = state;
     let lsp8_asset, erc725_address;
     erc725_address = mchammer.randomKey(up); 
-    lsp8_asset = await mchammer.deployLSP8(lspFactory, web3, erc725_address, EOA);
+    lsp8_asset = await mchammer.deployLSP8(lspFactory, web3, erc725_address, EOA, state);
     console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
     state.lsp8[lsp8_asset._address] = {
         owner: erc725_address,
@@ -54,7 +54,7 @@ async function loop_deployLSP8(state) {
 }
 async function loop_mintLSP7(state) {
     console.log(`[+] Minting more LSP7`);
-    let {web3, EOA, up, lsp7} = state;
+    let {lsp7} = state;
     if(Object.keys(lsp7).length > 0) {
         await mchammer.doMint('lsp7', LSP7Mintable.abi, state);
     } else {
@@ -106,7 +106,7 @@ async function do_transferLSP7(state, tx_amt_type) {
         console.log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`);
 
         if(tx_amt_type === 'all') {
-            amount = totalSupply
+            amount = parseInt(sender_balance);
         } else {
             amount = crypto.randomInt(parseInt(sender_balance));
         }
@@ -120,14 +120,14 @@ async function do_transferLSP7(state, tx_amt_type) {
             // recv_address = Object.keys(up)[other_idx];
             recv_address = mchammer.randomKey(up);
         }
-        console.log(`[+] Receiver will be ${recv_address}`);
+        // console.log(`[+] Receiver will be ${recv_address}`);
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
-        console.log(`[+] Transferring ${amount} of ${lsp7_asset._address} from ${sending_address} to ${recv_address}`);
+        
         try {
-            await mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state)
-            console.log(`[+] Transfered complete`);
+            mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state)
+            
         } catch(e) {
             console.log(e);
         }
