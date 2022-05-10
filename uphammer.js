@@ -106,13 +106,28 @@ async function loop() {
     }
 }
 
+function continueDeployments() {
+    let _continue = false;
+    if(Object.keys(state.up).length <= config.deployLimits.up
+        && Object.keys(state.lsp7.addresses).length <= config.deployLimits.lsp7
+        && Object.keys(state.lsp8.addresses).length <= config.deployLimits.lsp8)
+    {
+        _continue = true;
+    }
+    return _continue;
+}
+
 async function deployActors() {
     for(const action of config.dev_loop) {
         await actions[action](state);
     }
-    while(true) {
+    while(continueDeployments()) {
         let next = mchammer.randomIndex(deploy_actions); 
-        await deploy_actions[next](state);
+        try {
+            await deploy_actions[next](state);
+        } catch (e) {
+            console.log(`[!] Error during ${deploy_actions[next]}`);
+        }
     }
 }
 
@@ -126,7 +141,12 @@ async function runTransfers() {
     // call transfer on token, throughb UP and keymanager
     // with you own nonce++
     let next = mchammer.randomIndex(transfer_actions); 
-    transfer_actions[next](state);
+    try {
+        transfer_actions[next](state);
+    } catch(e) {
+        console.log(`[!] error during ${transfer_actions[next]}`);
+    }
+    
     await delay(crypto.randomInt(config.maxDelay))
     }
 }

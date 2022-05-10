@@ -136,16 +136,21 @@ async function doMint(type, abi, state) {
         let asset_address = randomKey(lsp.addresses);
         let erc725_address = lsp.addresses[asset_address].owner;
 
+        let lsp_asset = new web3.eth.Contract(abi, asset_address);
 
         let mint_amt_or_id = 100;
+
         if(type==='lsp8') {
             // we need to mint an Identifier, not an amount
-            mint_amt_or_id = web3.utils.toHex(state.lsp8.addresses[asset_address].totalSupply + 1);
+            // since this will be called multiple times before any tx completes,
+            // need to maintain state of the ids ourselves
+            let nextId = lsp.addresses[asset_address].currentId++;
+            mint_amt_or_id = web3.utils.toHex(nextId+1);
         }
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
-        let lsp_asset = new web3.eth.Contract(abi, asset_address);
+        
         await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state);
         state[type].transferable = true;
         if(type==='lsp7') {
@@ -168,16 +173,38 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
 
     let nonce = incrementNonce(state);
 
-    await up.km.methods.execute(abiPayload).send({
-        from: EOA.transfer.address, 
-        gas: 5_000_000,
-        gasPrice: '1000000000',
-        nonce
-      });
-
+    try {
+        await up.km.methods.execute(abiPayload).send({
+            from: EOA.transfer.address, 
+            gas: 5_000_000,
+            gasPrice: '1000000000',
+            nonce
+        })
+        .on('transactionHash', function(hash){
+            console.log(`[+] Tx: ${hash} Nonce: ${nonce}`);
+            state.txs.push({nonce, hash});
+        })
+        .on('receipt', function(receipt){
+            // let totalSupply = await 
+            lsp.methods.totalSupply().call().then((totalSupply) => {
+                console.log(`[+] Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce}`);
+            })
+            
+        })
+        .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
+            console.log(`[!] Transfer Error. Nonce ${nonce}`);
+            console.log(error);
+            if(receipt) {
+                console.log(receipt);
+            }
+        });
     
-    let totalSupply = await lsp.methods.totalSupply().call()
-    console.log(`[+] Minted ${totalSupply} tokens to ${lsp._address}`);
+        
+        
+    } catch(e) {
+        console.log(`[!] Error during minting. Nonce ${nonce}`);
+    }
+    
 }
 
 async function transfer(lsp, _from, _to, amount, up, state ) {
@@ -195,13 +222,21 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
             gas: 5_000_000,
             gasPrice: '1000000000',
             nonce
-          }).then((res) => {
-            if(res) {
-                console.log(`[+] Transfer complete`);
-                console.log(`[+] Tx: ${res.transactionHash} Nonce: ${nonce}`);
-                state.txs.push({nonce, tx: res.transactionHash});
-            } 
-          });
+        })
+        .on('transactionHash', function(hash){
+            console.log(`[+] Tx: ${hash} Nonce: ${nonce}`);
+            state.txs.push({nonce, hash});
+        })
+        .on('receipt', function(receipt){
+            console.log(`[+] Transfer complete ${receipt.transactionHash} Nonce ${nonce}`);
+        })
+        .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
+            console.log(`[!] Transfer Error. Nonce ${nonce}`);
+            console.log(error);
+            if(receipt) {
+                console.log(receipt);
+            }
+        });
     } catch(e) {
         console.log(e);
     }

@@ -12,9 +12,9 @@
         }
     },
     "deployLimits": {
-        "up": 50,
-        "lsp7": 25,
-        "lsp8": 25
+        "up": 2,
+        "lsp7": 2,
+        "lsp8": 2
     },
     "maxDelay": 10000,
     "dev_loop" : [
