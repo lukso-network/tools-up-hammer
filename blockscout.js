@@ -4,12 +4,14 @@ const events = require('events');
 const fs = require('fs');
 const readline = require('readline');
 const delay = require('await-delay');
+const lineReader = require('line-reader');
 
 let hostname = "blockscout.com"
 
 let hashes = [];
 let nextHash = 0;
 let continuing = true;
+let linesRead = 0;
 
 function reportReason(hash) {
     let path = `https://${hostname}/lukso/l14/tx/${hash}/internal-transactions`;
@@ -82,6 +84,25 @@ async function processLineByLine() {
     }
   }
 
+async function continuousReadline() {
+    let localLinesRead = 0;
+    lineReader.eachLine('txErrors', async function(hash, last) {
+        if (localLinesRead > linesRead) {
+            console.log(`${hash}`);
+            hashes.push(hash);
+            linesRead++;
+        }
+        localLinesRead++;
+        
+        if(last) {
+          console.log('Reached current end. Waiting for more');
+          await delay(5000);
+          continuousReadline();
+          
+        }
+      });
+}
+
 async function processHashes() {
     while(continuing) {
         if(nextHash < hashes.length) {
@@ -93,7 +114,8 @@ async function processHashes() {
 }
 
 async function run() {
-    await processLineByLine();
+    // await processLineByLine();
+    await continuousReadline();
     processHashes();
 }
 

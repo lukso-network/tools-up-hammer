@@ -4,39 +4,62 @@ A network stress testing tool
 
 
 ## Install
+```bash
 git clone git@github.com:lukso-network/tools-up-hammer.git
 cd tools-up-hammer
 npm i
+```
 
 ## Running
 
-### .env file
+### config.json
 
-The address and private key for the EOA that runs uphammer must be stored in an .env file located in the same directory that the script is run in. At minimum this file must have an ADDRESS and PRIVATE_KEY environment variable set.
+The config.json file provides a central location to control how up-hammer will operate.
 
-Additional options for setting the erc725 and key manager addresses for the first one or two UPs, as well as an initial LSP7 address can also be added to expedite the setup.
+**provider** provider network endpoint
+**chainId** chain ID for network
+**wallets** currently two wallets are used to separate deployments using lspFactory from web3 contract method calls. These two wallets are referred to as ``deploy`` and ``transfer`` respectively. Each must contain an ``address`` and ``privateKey``.
+**deployLimits** the number of deployments that will happen before deployments are ignored. Separate limits can be set for ``up``, ``lsp7``, and ``lsp8``.
+**maxDelay** the maximum delay in milliseconds between transfer calls are attempted
+**devLoop** for development purposes, if a particular order of deployments is preferred before random deployments commence. For example, the following would deploy and LSP7, then an LSP8, mint an LSP8, and then mint LSP7.
+```json
+[
+        "loop_deployLSP7",
+        "loop_deployLSP8",
+        "loop_mintLSP8",
+        "loop_mintLSP7"
+    ]
+```
+**logLevel** defines the log level for output. The log levels are defined in ``logging.js``
+```javascript
+const DEBUG = 0;
+const VERBOSE = 1;
+const INFO = 2;
+const QUIET = 3;
+```
+**txErrorLog** file name where transaction hashes of reverts are stored to be used by the error logging tool (currently named blocksout.js)
+**deployProxy** set to false if you want to deploy full contracts when creating the Universal Profile. Recommend to leave true
+**presets** see presets section
 
-A template .env file is as follows
+### presets.json
 
-ADDRESS=
-PRIVATE_KEY=
-ERC725_ADDRESS=
-KEYMANAGER_ADDRESS=
-ERC725_ADDRESS_B=
-KEYMANAGER_ADDRESS_B=
-LSP7_ADDRESS=
+The concept of presets is to provide addresses of pre-deployed UPs and LSPs to expedite script initialization. Currently there are bugs when using LSP presets, so these are empty. 
+
+Because UPs and deployed with a specific controller address, the top level keys must be the address of the controlling account that initially deployed them. 
 
 ### Usage
-Uphammer defaults to using the L16 network. To use L14, pass -l14 as a command line argument
 
-Use --noproxies to disable deploying proxy contracts (needs more testing)
+```bash
+node uphammer.js
+```
 
+TODO provide custom config file, run from within another script, etc.
 
-## Scaling
+## blockscout.js
 
-Currently, calls are made syncrhonously using await statements. This makes the script wait for the request to finish before the script can continue, and therefore does not actually model the burst architecture of actual internet communication. One option would be to remove the await statements and instead take advantage of promises. Since javascript is single threaded, it should be safe to update the state of the script in this fashion. However, this might take time to fully implement. A faster way to scale the script would be to wrap it in a bash script that would spin up 10, 20, 100 or more uphammer scripts running as daemons. This could easily parralellize the script without much additional work.
-
+A buggy, experimental tool to iterate over the failed transaction hashes and print the revert reason to screen.
 
 ## TODO
 
-Improve usage of script with better error handling of .env file and cli args.
+Consolidate wallets.
+Handle nonce issues.

@@ -200,13 +200,13 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
             nonce
         })
         .on('transactionHash', function(hash){
-            console.log(`[+] Tx: ${hash} Nonce: ${nonce}`);
+            log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
             state.txs.push({nonce, hash});
         })
         .on('receipt', function(receipt){
             // let totalSupply = await 
             lsp.methods.totalSupply().call().then((totalSupply) => {
-                console.log(`[+] Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce}`);
+                log(`[+] Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce}`, VERBOSE);
             })
             
         })
