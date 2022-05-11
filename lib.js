@@ -7,6 +7,15 @@ const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.
 const schemas = require('./schemas.js').schemas;
 const lsp3Profile = require('./profiles.js').profile;
 const config = require("./config.json");
+
+const log = require("./logging").log;
+const warn = require("./logging").warn;
+const DEBUG = require("./logging").DEBUG;
+const VERBOSE = require("./logging").VERBOSE;
+const INFO = require("./logging").INFO;
+const QUIET = require("./logging").QUIET
+
+
 const OPERATION_CALL = 0;
 
 function reinitLspFactory(lspFactory) {
@@ -19,7 +28,13 @@ function reinitLspFactory(lspFactory) {
 
 function incrementNonce(state) {
     let nonce = state.nonce++;
-    console.log(`[+] Sending  tx with nonce ${nonce}`);
+    // if(crypto.randomInt(10) < 3) {
+    //     // inject a nonce fault
+    //     let oldNonce = nonce;
+    //     nonce = state.nonce++;
+    //     state.pendingTxs.push({hash: "0x845181cb4362fce9560ddc7de6a69ad3a1e65711d9bafae16b52b01d7fd82c5f", nonce: oldNonce});
+    // }
+    log(`[+] Sending  tx with nonce ${nonce}`, DEBUG);
     return nonce;
 }
 
@@ -28,22 +43,22 @@ async function initUP(state) {
     let erc725_address, erc725;
     let km_address, km;
     let up, deployed;
-    if(config.presets.up.length > 0 && !state.up[config.presets.up[0].ERC725_ADDRESS]) {
-        console.log(`[+] Found UP addresses. Skipping deployments`);
-        erc725_address = config.presets.up[0].ERC725_ADDRESS;
-        km_address = config.presets.up[0].KEYMANAGER_ADDRESS;
-    } else if(config.presets.up.length > 1 && !state.up[config.presets.up[1].ERC725_ADDRESS]) {
-        console.log(`[+] Found Secondary UP. Skipping deployments`);
-        erc725_address = config.presets.up[1].ERC725_ADDRESS;
-        km_address = config.presets.up[1].KEYMANAGER_ADDRESS;
+    if(config.presets[config.wallets.deploy.address].up.length > 0 && !state.up[config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS]) {
+        log(`[+] Found UP addresses. Skipping deployments`, VERBOSE);
+        erc725_address = config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS;
+        km_address = config.presets[config.wallets.deploy.address].up[0].KEYMANAGER_ADDRESS;
+    } else if(config.presets[config.wallets.deploy.address].up.length > 1 && !state.up[config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS]) {
+        log(`[+] Found Secondary UP. Skipping deployments`, VERBOSE);
+        erc725_address = config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS;
+        km_address = config.presets[config.wallets.deploy.address].up[1].KEYMANAGER_ADDRESS;
     } else {
-        console.log(`[+] Deploying Profile`);
+        log(`[+] Deploying Profile`, VERBOSE);
         deployed = await deploy(lspFactory);
         erc725_address = deployed.ERC725Account.address;
         km_address = deployed.KeyManager.address;
     }
-    console.log(`[+] ERC725 address:     ${erc725_address}`);
-    console.log(`[+] KeyManager address: ${km_address}`);
+    log(`[+] ERC725 address:     ${erc725_address}`, INFO);
+    log(`[+] KeyManager address: ${km_address}`, INFO);
     erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
     km = new web3.eth.Contract(KeyManager.abi, km_address);
     state.up[erc725_address] = {
@@ -160,7 +175,7 @@ async function doMint(type, abi, state) {
         }
         
     } else {
-        console.log(`[!] No ${type} to mint :(`);
+        warn(`[!] No ${type} to mint`, INFO);
     }
 }
 
@@ -192,17 +207,17 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
             
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-            console.log(`[!] Transfer Error. Nonce ${nonce}`);
-            console.log(error);
+            warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
+            warn(error, INFO);
             if(receipt) {
-                console.log(receipt);
+                log(receipt, VERBOSE);
             }
         });
     
         
         
     } catch(e) {
-        console.log(`[!] Error during minting. Nonce ${nonce}`);
+        warn(`[!] Error during minting. Nonce ${nonce}`, INFO);
     }
     
 }
@@ -215,7 +230,7 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
 
     let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
-    console.log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`);
+    log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`, DEBUG);
     try {
         up.km.methods.execute(abiPayload).send({
             from: up.EOA.transfer.address, 
@@ -224,21 +239,21 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
             nonce
         })
         .on('transactionHash', function(hash){
-            console.log(`[+] Tx: ${hash} Nonce: ${nonce}`);
-            state.txs.push({nonce, hash});
+            log(`[+] Tx: ${hash} Nonce: ${nonce}`, INFO);
+            state.pendingTxs.push({nonce, hash});
         })
         .on('receipt', function(receipt){
-            console.log(`[+] Transfer complete ${receipt.transactionHash} Nonce ${nonce}`);
+            log(`[+] Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-            console.log(`[!] Transfer Error. Nonce ${nonce}`);
-            console.log(error);
+            warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
+            log(error, INFO);
             if(receipt) {
-                console.log(receipt);
+                log(receipt, VERBOSE);
             }
         });
     } catch(e) {
-        console.log(e);
+        warn(e, INFO);
     }
     
 }

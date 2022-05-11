@@ -12,42 +12,20 @@
         }
     },
     "deployLimits": {
-        "up": 2,
-        "lsp7": 2,
-        "lsp8": 2
+        "up": 50,
+        "lsp7": 25,
+        "lsp8": 25
     },
-    "maxDelay": 10000,
+    "maxDelay": 300,
+    "nonceCheckDelay": 3000,
     "dev_loop" : [
+        "loop_deployLSP7",
         "loop_deployLSP8",
         "loop_mintLSP8",
-        "loop_mintLSP8",
-        "loop_deployLSP7",
         "loop_mintLSP7"
     ],
+    "logLevel": 2,
     "deployProxy": true,
     "initialUPs": 2,
-    "presets": {
-        "oldup": [
-            {
-                "ERC725_ADDRESS": "0x850d052449266E5CDF77bD7328c53176c984ddA0",
-                "KEYMANAGER_ADDRESS": "0xAE7eaBD7a8A9cd724365705F5142742825CED920"
-            },
-            {
-                "ERC725_ADDRESS": "0x850c31b5caD740BBE388aD651BfabdAdbB1A3117",
-                "KEYMANAGER_ADDRESS": "0xec608f31fCCFA5cc23324e7814f2a9cc24C57bE0"
-            }
-        ],
-        "up": [
-            {
-                "ERC725_ADDRESS": "0xB22Ff7A3B7b26187E8de6aD177dC8eDd932F1b13",
-                "KEYMANAGER_ADDRESS": "0x9A171D8EA32dd5cE4464eB9bFd70Ad186915ea90"
-            },
-            {
-                "ERC725_ADDRESS": "0xd447308cf1ABe6993EcD436EE1791cF3Fe08E386",
-                "KEYMANAGER_ADDRESS": "0x79C755BE9F9A985dC2C73996b1f275302c319a71"
-            }
-        ],
-        "lsp7": ["0x12a85e40060Ce48EC1eC15262eE5C057a1a062EF"],
-        "lsp8": []
-    }
+    "presets": {}
 }

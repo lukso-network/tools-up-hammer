@@ -13,6 +13,13 @@ const delay = require('await-delay');
 const mchammer = require('./lib');
 const actions = require('./actions');
 const config = require("./config.json");
+const presets = require("./presets.json");
+const log = require("./logging").log;
+const warn = require("./logging").warn;
+const DEBUG = require("./logging").DEBUG;
+const VERBOSE = require("./logging").VERBOSE;
+const INFO = require("./logging").INFO;
+const QUIET = require("./logging").QUIET
 
 var argv = yargs(process.argv.slice(2))
     .usage('Usage: $0 [--noproxies] [--network 14|16] [-u <number of UPs>')
@@ -52,6 +59,8 @@ const lspFactory = new LSPFactory(provider, {
 });
 
 
+config.presets = presets;
+
 
 let state = {
     up: {},
@@ -66,6 +75,7 @@ let state = {
     nonce: null,
     droppedNonces: [],
     pendingTxs: [],
+    mempoolTxs: [],
     txs: [],
     web3,
     lspFactory,
@@ -76,7 +86,14 @@ let state = {
     }
 }
 
-
+web3.eth.subscribe('pendingTransactions', function(error, result){
+    if (!error)
+        log(result, INFO);
+})
+.on("data", function(transaction){
+    log(`Subscribed pending: ${transaction.hash}`, INFO);
+    state.mempoolTxs.push(transaction.hash);
+});
 
 async function init(num_to_deploy) {
     for(let i=0; i < num_to_deploy; i++) {
@@ -99,13 +116,6 @@ const transfer_actions = [
     actions.loop_mintLSP8,
 ];
 
-async function loop() { 
-    console.log("[+] Entering endless loop");
-    while(true) {
-
-    }
-}
-
 function continueDeployments() {
     let _continue = false;
     if(Object.keys(state.up).length <= config.deployLimits.up
@@ -126,7 +136,7 @@ async function deployActors() {
         try {
             await deploy_actions[next](state);
         } catch (e) {
-            console.log(`[!] Error during ${deploy_actions[next]}`);
+            warn(`Error during ${deploy_actions[next]}`, INFO);
         }
     }
 }
@@ -144,7 +154,7 @@ async function runTransfers() {
     try {
         transfer_actions[next](state);
     } catch(e) {
-        console.log(`[!] error during ${transfer_actions[next]}`);
+        warn(`error during ${transfer_actions[next]}`, INFO);
     }
     
     await delay(crypto.randomInt(config.maxDelay))
@@ -152,27 +162,47 @@ async function runTransfers() {
 }
 
 async function checkPendingTx() {
-    for(pendingTx in state.pendingTxs) {
-      const tx = web3.eth.getPendingTransacitons(pendingTx.hash)
-      if(!tx)
-        state.droppedNonces.push(pendingTx.nonce)
+    
+    let missing = state.pendingTxs.filter((pendingTx) => {
+        !state.mempoolTxs.includes(pendingTx.hash)
+    })
+    for(tx in missing) {
+        state.droppedNonces.push(tx.nonce);
     }
+
+}
+
+async function nonceCheck() {
+    
+    while(true) {
+        // is nonce too low?
+        // let currentNonce = await web3.eth.getTransactionCount(config.wallets.transfer.address, "pending");
+        // if (state.nonce < currentNonce) {
+        //     state.nonce = currentNonce;
+        // }
+        // are there missing nonces?
+        checkPendingTx();
+
+        await delay(config.nonceCheckDelay);
+
+    }
+    
 }
 
 async function checkBalance(wallet) {
-    console.log(`[+] Checking ${wallet} balance...`);
+    log(`Checking ${wallet} balance...`, INFO);
     if(config.wallets[wallet] === undefined) {
-        console.log(`[!] ${wallet} wallet is not properly configured`);
+        warn(`${wallet} wallet is not properly configured`, QUIET);
     }
     let address = config.wallets[wallet].address;
     let balance = await web3.eth.getBalance(address);
-    console.log(`[+] Balance: ${balance}`);
+    log(`Balance: ${balance}`, INFO);
     if (balance === '0') {
-        console.log(`[!] Go get some gas for ${config.wallets[wallet].address}`);
+        warn(`[!] Go get some gas for ${config.wallets[wallet].address}`);
         if(provider === L14) {
-            console.log('http://faucet.l14.lukso.network/');    
+            warn('http://faucet.l14.lukso.network/', INFO);    
         } else {
-            console.log('http://faucet.11111111.l16.lukso.network/');
+            warn('http://faucet.11111111.l16.lukso.network/', INFO);
         } 
         return false;
     }
@@ -187,15 +217,14 @@ async function start() {
     }
     
     state.nonce = await web3.eth.getTransactionCount(config.wallets.transfer.address, "pending");
-    console.log(`[+] Transfer Wallet Nonce is ${state.nonce}`);
+    log(`[+] Transfer Wallet Nonce is ${state.nonce}`, INFO);
     await init(config.initialUPs);
     console.log(state);
     
-    
+    nonceCheck();
     runTransfers();
     deployActors();
-
-    // loop();
+    
     
 }
 

@@ -1,0 +1,16 @@
+{
+    "0x765a96536a940e59ec0A48C8F674a5542eB9A058": {
+        "up": [
+            {
+                "ERC725_ADDRESS": "0xB22Ff7A3B7b26187E8de6aD177dC8eDd932F1b13",
+                "KEYMANAGER_ADDRESS": "0x9A171D8EA32dd5cE4464eB9bFd70Ad186915ea90"
+            },
+            {
+                "ERC725_ADDRESS": "0xd447308cf1ABe6993EcD436EE1791cF3Fe08E386",
+                "KEYMANAGER_ADDRESS": "0x79C755BE9F9A985dC2C73996b1f275302c319a71"
+            }
+        ],
+        "lsp7": ["0x12a85e40060Ce48EC1eC15262eE5C057a1a062EF", "0x39D839087BE04B3C7ff1ecBeEd7f7Fa44f87070a"],
+        "lsp8": []
+    }
+}
