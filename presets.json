@@ -10,7 +10,7 @@
                 "KEYMANAGER_ADDRESS": "0x79C755BE9F9A985dC2C73996b1f275302c319a71"
             }
         ],
-        "lsp7": ["0x12a85e40060Ce48EC1eC15262eE5C057a1a062EF", "0x39D839087BE04B3C7ff1ecBeEd7f7Fa44f87070a"],
+        "lsp7": [],
         "lsp8": []
     }
 }

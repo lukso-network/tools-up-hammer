@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const fs = require('fs');
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const LSP8IdentifiableDigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP8IdentifiableDigitalAsset.json');
@@ -164,6 +165,9 @@ async function doMint(type, abi, state) {
         }
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+        if(!up[erc725_address]) {
+            console.log('wtf is going on');
+        }
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         
         await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state);
@@ -209,6 +213,12 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
             warn(error, INFO);
+            let hash = extractHashFromStacktrace(error);
+            fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
+                if (err) {
+                  console.error(err);
+                }
+            })
             if(receipt) {
                 log(receipt, VERBOSE);
             }
@@ -220,6 +230,13 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
         warn(`[!] Error during minting. Nonce ${nonce}`, INFO);
     }
     
+}
+
+function extractHashFromStacktrace(error) {
+    let startIdx = error.stack.indexOf("{");
+    let endIdx = error.stack.lastIndexOf("}") + 1;
+    let parsed = JSON.parse(error.stack.slice(startIdx, endIdx));
+    return parsed.transactionHash;
 }
 
 async function transfer(lsp, _from, _to, amount, up, state ) {
@@ -239,7 +256,7 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
             nonce
         })
         .on('transactionHash', function(hash){
-            log(`[+] Tx: ${hash} Nonce: ${nonce}`, INFO);
+            log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
             state.pendingTxs.push({nonce, hash});
         })
         .on('receipt', function(receipt){
@@ -248,6 +265,12 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
             log(error, INFO);
+            let hash = extractHashFromStacktrace(error);
+            fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
+                if (err) {
+                  console.error(err);
+                }
+            })
             if(receipt) {
                 log(receipt, VERBOSE);
             }

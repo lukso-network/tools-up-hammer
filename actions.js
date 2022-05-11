@@ -40,7 +40,7 @@ async function loop_deployLSP7(state) {
         if(Object.keys(lsp7.addresses).length < config.presets[config.wallets.deploy.address].lsp7.length) {
             let preset = Object.keys(lsp7.addresses).length;
             lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, config.presets[config.wallets.deploy.address].lsp7[preset]);
-            erc725_address = await lsp7_asset.methods.owner().call();
+            erc725_address = config.wallets.deploy.address; //await lsp7_asset.methods.owner().call();
         } else {
             erc725_address = mchammer.randomKey(up); 
             lsp7_asset = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA, state);
@@ -85,7 +85,7 @@ async function loop_deployLSP8(state) {
 
 }
 async function loop_mintLSP7(state) {
-    console.log(`[+] Minting more LSP7`);
+    log(`[+] Minting more LSP7`, VERBOSE);
     let {lsp7} = state;
     if(Object.keys(state.lsp7.addresses).length > 0) {
         await mchammer.doMint('lsp7', LSP7Mintable.abi, state);

@@ -25,6 +25,7 @@
         "loop_mintLSP7"
     ],
     "logLevel": 2,
+    "txErrorLog": "./txErrors",
     "deployProxy": true,
     "initialUPs": 2,
     "presets": {}
