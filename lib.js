@@ -55,9 +55,15 @@ async function initUP(state) {
     } else {
         log(`[+] Deploying Profile`, VERBOSE);
         deployed = await deploy(lspFactory);
-        erc725_address = deployed.ERC725Account.address;
-        km_address = deployed.KeyManager.address;
+        if(deployed) {
+            erc725_address = deployed.ERC725Account.address;
+            km_address = deployed.KeyManager.address;
+        } else {
+            return;
+        }
+        
     }
+
     log(`[+] ERC725 address:     ${erc725_address}`, INFO);
     log(`[+] KeyManager address: ${km_address}`, INFO);
     erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
@@ -76,71 +82,85 @@ async function deploy(lspFactory) {
         config.wallets.deploy.address,
         config.wallets.transfer.address
     ];
-    const up = await lspFactory.LSP3UniversalProfile.deploy(
-        {
-            controllerAddresses: controller_addresses, // Address which will controll the UP
-            lsp3Profile: lsp3Profile,
-        },
-        {
-            ERC725Account: {
-                deployProxy: config.deployProxy,
+    try {
+        const up = await lspFactory.LSP3UniversalProfile.deploy(
+            {
+                controllerAddresses: controller_addresses, // Address which will controll the UP
+                lsp3Profile: lsp3Profile,
+                
             },
-            UniversalReceiverDelegate: {
-                deployProxy: config.deployProxy,
-            },
-            KeyManager: {
-                deployProxy: config.deployProxy, 
-            }
-        }
-    );
-    return up;
+            {
+                ERC725Account: {
+                    deployProxy: config.deployProxy,
+                },
+                UniversalReceiverDelegate: {
+                    deployProxy: config.deployProxy,
+                },
+                KeyManager: {
+                    deployProxy: config.deployProxy, 
+                }
+            })
+    
+        return up;
+    } catch(e) {
+        warn("Error during UP Deployment", WARN);
+        console.log(e);
+    }
+    
 }
 
 async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
     lspFactory = reinitLspFactory(lspFactory);
 
     // let nonce = incrementNonce(state);
-
-    const lsp8_asset = await lspFactory.LSP8IdentifiableDigitalAsset.deploy({
-        name: "My token",
-        symbol: "TKN",
-        controllerAddress: owner_address, // Account which will own the Token Contract
-        // nonce
-    })
-
-    const lsp8 = new web3.eth.Contract(
-        LSP8IdentifiableDigitalAsset.abi,
-        lsp8_asset.LSP8IdentifiableDigitalAsset.address,
-        {
-            from: EOA.deploy.address
-        }
-    );
-
-    return lsp8;
+    try {
+        const lsp8_asset = await lspFactory.LSP8IdentifiableDigitalAsset.deploy({
+            name: "My token",
+            symbol: "TKN",
+            controllerAddress: owner_address, // Account which will own the Token Contract
+        });
+    
+        const lsp8 = new web3.eth.Contract(
+            LSP8IdentifiableDigitalAsset.abi,
+            lsp8_asset.LSP8IdentifiableDigitalAsset.address,
+            {
+                from: EOA.deploy.address
+            }
+        );
+    
+        return lsp8;
+    } catch (e) {
+        warn("Error during LSP8 Deployment", INFO);
+    }
+    
 }
 
 async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
     lspFactory = reinitLspFactory(lspFactory);
     
     // let nonce = incrementNonce(state);
+    try {
+        const digitalAsset = await lspFactory.LSP7DigitalAsset.deploy({
+            name: "Some LSP7",
+            symbol: "TKN",
+            controllerAddress: owner_address, // Account which will own the Token Contract
+            isNFT: false,
+        })
+        
+        const lsp7 = new web3.eth.Contract(
+            LSP7Mintable.abi,
+            digitalAsset.LSP7DigitalAsset.address,
+            {
+                from: EOA.deploy.address
+            }
+        );
+        
+        return lsp7;
+    } catch(e) {
+        warn("Error during LSP7 Deployment", INFO);
+        console.log(e);
+    }
     
-    const digitalAsset = await lspFactory.LSP7DigitalAsset.deploy({
-        name: "Some LSP7",
-        symbol: "TKN",
-        controllerAddress: owner_address, // Account which will own the Token Contract
-        isNFT: false,
-        // nonce
-    })
-    
-    const lsp7 = new web3.eth.Contract(
-        LSP7Mintable.abi,
-        digitalAsset.LSP7DigitalAsset.address,
-        {
-            from: EOA.deploy.address
-        }
-    );
-    
-    return lsp7;
 }
 
 async function doMint(type, abi, state) {
@@ -185,14 +205,15 @@ async function doMint(type, abi, state) {
 
 //https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
 async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
-
-    let targetPayload = await lsp.methods.mint(up_address, amt_or_id, false, '0x').encodeABI();
-    
-    let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
-
-    let nonce = incrementNonce(state);
-
+    let nonce;
     try {
+        let targetPayload = await lsp.methods.mint(up_address, amt_or_id, false, '0x').encodeABI();
+        
+        let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
+
+        nonce = incrementNonce(state);
+
+    
         await up.km.methods.execute(abiPayload).send({
             from: EOA.transfer.address, 
             gas: 5_000_000,
@@ -214,11 +235,14 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
             warn(error, INFO);
             let hash = extractHashFromStacktrace(error);
-            fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
-                if (err) {
-                  console.error(err);
-                }
-            })
+            if (hash) {
+                fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
+                    if (err) {
+                      console.error(err);
+                    }
+                })
+            }
+            
             if(receipt) {
                 log(receipt, VERBOSE);
             }
@@ -235,20 +259,27 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
 function extractHashFromStacktrace(error) {
     let startIdx = error.stack.indexOf("{");
     let endIdx = error.stack.lastIndexOf("}") + 1;
-    let parsed = JSON.parse(error.stack.slice(startIdx, endIdx));
+    let parsed;
+    try {
+        parsed = JSON.parse(error.stack.slice(startIdx, endIdx));
+    } catch(e) {
+        return false;
+    }
+    
     return parsed.transactionHash;
 }
 
 async function transfer(lsp, _from, _to, amount, up, state ) {
-    // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
-    let targetPayload = lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
-    
-    let nonce = incrementNonce(state);
-
-    let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
-
-    log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`, DEBUG);
     try {
+        // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
+        let targetPayload = lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
+        
+        let nonce = incrementNonce(state);
+
+        let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
+
+        log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`, DEBUG);
+    
         up.km.methods.execute(abiPayload).send({
             from: up.EOA.transfer.address, 
             gas: 5_000_000,
@@ -266,11 +297,14 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
             log(error, INFO);
             let hash = extractHashFromStacktrace(error);
-            fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
-                if (err) {
-                  console.error(err);
-                }
-            })
+            if (hash) {
+                fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
+                    if (err) {
+                      console.error(err);
+                    }
+                })
+            }
+            
             if(receipt) {
                 log(receipt, VERBOSE);
             }

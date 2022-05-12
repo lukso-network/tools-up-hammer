@@ -213,7 +213,7 @@ async function start() {
     let deploy_balance = await checkBalance("deploy");
     let transfer_balance = await checkBalance("transfer");
     if(!deploy_balance || !transfer_balance) {
-        exit();
+        process.exit();
     }
     
     state.nonce = await web3.eth.getTransactionCount(config.wallets.transfer.address, "pending");

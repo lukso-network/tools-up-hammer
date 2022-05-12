@@ -18,17 +18,21 @@ async function loop_deployUP(state) {
         console.log(`[+] Deploying new UP`);
         let {lspFactory, web3, EOA, up} = state;
         let deployed = await mchammer.deploy(lspFactory);
-        let erc725_address = deployed.ERC725Account.address;
-        let km_address = deployed.KeyManager.address;
         
-        console.log(`[+] ERC725 address:     ${erc725_address}`);
-        console.log(`[+] KeyManager address: ${km_address}`);
-        let erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
-        let km = new web3.eth.Contract(KeyManager.abi, km_address);
-        state.up[erc725_address] = {
-            erc725,
-            km
+        if(deployed) {
+            let erc725_address = deployed.ERC725Account.address;
+            let km_address = deployed.KeyManager.address;
+            
+            console.log(`[+] ERC725 address:     ${erc725_address}`);
+            console.log(`[+] KeyManager address: ${km_address}`);
+            let erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+            let km = new web3.eth.Contract(KeyManager.abi, km_address);
+            state.up[erc725_address] = {
+                erc725,
+                km
+            }
         }
+        
     }
 }
 async function loop_deployLSP7(state) {
@@ -46,11 +50,14 @@ async function loop_deployLSP7(state) {
             lsp7_asset = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA, state);
         }
 
-        console.log(`[+] LSP7 address:       ${lsp7_asset._address}`);
-        state.lsp7.addresses[lsp7_asset._address] = {
-            owner: erc725_address,
-            totalSupply: 0,
+        if(lsp7_asset) {
+            console.log(`[+] LSP7 address:       ${lsp7_asset._address}`);
+            state.lsp7.addresses[lsp7_asset._address] = {
+                owner: erc725_address,
+                totalSupply: 0,
+            }
         }
+        
     }
     
 
@@ -74,13 +81,17 @@ async function loop_deployLSP8(state) {
             lsp8_asset = await mchammer.deployLSP8(lspFactory, web3, erc725_address, EOA, state);
 
         }
-        console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
+
+        if (lsp8_asset) {
+            console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
         
-        state.lsp8.addresses[lsp8_asset._address] = {
-            owner: erc725_address,
-            totalSupply,
-            currentId
-        } 
+            state.lsp8.addresses[lsp8_asset._address] = {
+                owner: erc725_address,
+                totalSupply,
+                currentId
+            } 
+        }
+        
     }
 
 }
@@ -114,104 +125,109 @@ async function loop_transferAllLSP7(state) {
 async function do_transferLSP7(state, tx_amt_type) {
     log(`[+] Transfering LSP7`, VERBOSE);
     let {web3, EOA, up, lsp7} = state;
-    if(lsp7.transferable) {
-        let amount;
-        let totalSupply = "0";
-        let lsp7_asset;
-        // as long as one lsp7 asset has a totalSupply >= transfer amount, this won't get stuck
-        // need to ensure that condition is always met
-        while(totalSupply === "0") {
-            let lsp7_address = mchammer.randomKey(lsp7.addresses);
-            lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
-            totalSupply = await lsp7_asset.methods.totalSupply().call();    
-        }
+    try {
+        if(lsp7.transferable) {
+            let amount;
+            let totalSupply = "0";
+            let lsp7_asset;
+            // as long as one lsp7 asset has a totalSupply >= transfer amount, this won't get stuck
+            // need to ensure that condition is always met
+            while(totalSupply === "0") {
+                let lsp7_address = mchammer.randomKey(lsp7.addresses);
+                lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
+                totalSupply = await lsp7_asset.methods.totalSupply().call();    
+            }
 
-        let sender_balance = "0";
-        let erc725_address;
-        while(sender_balance === "0") {
-            erc725_address = mchammer.randomKey(up);
-            sender_balance = await lsp7_asset.methods.balanceOf(erc725_address).call();
-        }
-        let sending_address = erc725_address;
-        log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`, VERBOSE);
+            let sender_balance = "0";
+            let erc725_address;
+            while(sender_balance === "0") {
+                erc725_address = mchammer.randomKey(up);
+                sender_balance = await lsp7_asset.methods.balanceOf(erc725_address).call();
+            }
+            let sending_address = erc725_address;
+            log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`, VERBOSE);
 
-        if(tx_amt_type === 'all') {
-            amount = parseInt(sender_balance);
-        } else {
-            amount = crypto.randomInt(parseInt(sender_balance));
-        }
+            if(tx_amt_type === 'all') {
+                amount = parseInt(sender_balance);
+            } else {
+                amount = crypto.randomInt(parseInt(sender_balance));
+            }
 
-        // with an unknown amount of UPs, select a destination randomly
-        let recv_address = sending_address;
-        while(recv_address === sending_address)
-        {
-            // loop until we find an address that is not the sender
-            // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
-            // recv_address = Object.keys(up)[other_idx];
-            recv_address = mchammer.randomKey(up);
-        }
-        // console.log(`[+] Receiver will be ${recv_address}`);
+            // with an unknown amount of UPs, select a destination randomly
+            let recv_address = sending_address;
+            while(recv_address === sending_address)
+            {
+                // loop until we find an address that is not the sender
+                // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
+                // recv_address = Object.keys(up)[other_idx];
+                recv_address = mchammer.randomKey(up);
+            }
+            // console.log(`[+] Receiver will be ${recv_address}`);
 
-        erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
-        km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
-        
-        try {
-            mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state)
+            erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+            km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
             
-        } catch(e) {
-            warn(e, INFO);
+        
+            mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state)
+        } else {
+            warn('[!] No LSP7 to Transfer', VERBOSE);
         }
-    } else {
-        warn('[!] No LSP7 to Transfer', VERBOSE);
+    } catch(e) {
+        warn("ERROR when transfering LSP7", INFO);
+        warn(e, INFO);
     }
+    
 }
 
 
 async function loop_transferLSP8(state) {
     log(`[+] Transfering LSP8`, VERBOSE);
     let {web3, EOA, up, lsp8} = state;
-    if(lsp8.transferable) {
-        let totalSupply = "0";
-        let lsp8_contract, lsp8_address;
-        // as long as one lsp8 assets has a totalSupply >= transfer amount, this won't get stuck
-        // need to ensure that condition is always met
-        while(totalSupply === "0") {
-            lsp8_address = mchammer.randomKey(lsp8.addresses);
-            lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);
-            totalSupply = await lsp8_contract.methods.totalSupply().call();
-        }
-        
-        
-        // select a random token from the supply
-        let tokenId = parseInt(crypto.randomInt(parseInt(totalSupply))) + 1; // prevent id from being 0
-        let tokenIdBytes = web3.utils.toHex(tokenId);
+    try {
+        if(lsp8.transferable) {
+            let totalSupply = "0";
+            let lsp8_contract, lsp8_address;
+            // as long as one lsp8 assets has a totalSupply >= transfer amount, this won't get stuck
+            // need to ensure that condition is always met
+            while(totalSupply === "0") {
+                lsp8_address = mchammer.randomKey(lsp8.addresses);
+                lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);
+                totalSupply = await lsp8_contract.methods.totalSupply().call();
+            }
+            
+            
+            // select a random token from the supply
+            let tokenId = parseInt(crypto.randomInt(parseInt(totalSupply))) + 1; // prevent id from being 0
+            let tokenIdBytes = web3.utils.toHex(tokenId);
 
-        // find out who owns it
-        let owner = await lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call();
-        log(`[+] Sender ${owner} owns ${tokenIdBytes} token`, DEBUG);
+            // find out who owns it
+            let owner = await lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call();
+            log(`[+] Sender ${owner} owns ${tokenIdBytes} token`, DEBUG);
 
-        // select a random recipient
-        let recv_address = owner;
-        while(recv_address === owner)
-        {
-            // loop until we find an address that is not the sender
-            // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
-            // recv_address = Object.keys(up)[other_idx];
-            recv_address = mchammer.randomKey(up);
-        }
-        log(`[+] Receiver will be ${recv_address}`, DEBUG);
+            // select a random recipient
+            let recv_address = owner;
+            while(recv_address === owner)
+            {
+                // loop until we find an address that is not the sender
+                // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
+                // recv_address = Object.keys(up)[other_idx];
+                recv_address = mchammer.randomKey(up);
+            }
+            log(`[+] Receiver will be ${recv_address}`, DEBUG);
 
-        // send
-        erc725 = new web3.eth.Contract(UniversalProfile.abi, owner);
-        km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
-        log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`, DEBUG);
-        try {
+            // send
+            erc725 = new web3.eth.Contract(UniversalProfile.abi, owner);
+            km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
+            log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`, DEBUG);
+            
             await mchammer.transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state);
-        } catch(e) {
-            console.log(e);
+        
+        } else {
+            warn('[!] No LSP8 to transfer', VERBOSE);
         }
-    } else {
-        warn('[!] No LSP8 to transfer', VERBOSE);
+    } catch(e) {
+        warn("ERROR when transferring LSP8", INFO);
+        console.log(e);
     }
     
 }

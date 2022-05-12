@@ -16,7 +16,7 @@
         "lsp7": 25,
         "lsp8": 25
     },
-    "maxDelay": 300,
+    "maxDelay": 100,
     "nonceCheckDelay": 3000,
     "dev_loop" : [
         "loop_deployLSP7",

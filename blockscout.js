@@ -114,8 +114,8 @@ async function processHashes() {
 }
 
 async function run() {
-    // await processLineByLine();
-    await continuousReadline();
+    await processLineByLine();
+    // await continuousReadline();
     processHashes();
 }
 
