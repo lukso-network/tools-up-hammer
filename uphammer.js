@@ -74,8 +74,7 @@ let state = {
     },
     nonce: null,
     droppedNonces: [],
-    pendingTxs: [],
-    mempoolTxs: [],
+    pendingTxs: {},
     txs: [],
     web3,
     lspFactory,
@@ -163,11 +162,22 @@ async function runTransfers() {
 
 async function checkPendingTx() {
     
-    let missing = state.pendingTxs.filter((pendingTx) => {
-        !state.mempoolTxs.includes(pendingTx.hash)
-    })
-    for(tx in missing) {
-        state.droppedNonces.push(tx.nonce);
+    let pendingNonces = Object.keys(state.pendingTxs);
+    for(i in pendingNonces) {
+        let nonce = pendingNonces[i]
+        // has this nonce been seen enough as pending that it hits the threshold?
+        if(state.pendingTxs[nonce] >= config.pendingNonceThreshold) {
+            // assume the nonce is dropped and push to dropped nonces
+            state.droppedNonces.push(nonce);
+            // sort the array so earliest nonce is first
+            state.droppedNonces.sort();
+            // delete from pending because it will get replayed
+            delete state.pendingTxs[nonce];
+        } else {
+            // otherwise increment we've seen the nonce
+            state.pendingTxs[nonce]++;
+        }
+        
     }
 
 }
@@ -175,18 +185,9 @@ async function checkPendingTx() {
 async function nonceCheck() {
     
     while(true) {
-        // is nonce too low?
-        // let currentNonce = await web3.eth.getTransactionCount(config.wallets.transfer.address, "pending");
-        // if (state.nonce < currentNonce) {
-        //     state.nonce = currentNonce;
-        // }
-        // are there missing nonces?
         checkPendingTx();
-
         await delay(config.nonceCheckDelay);
-
     }
-    
 }
 
 async function checkBalance(wallet) {

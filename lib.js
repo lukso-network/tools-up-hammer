@@ -27,14 +27,13 @@ function reinitLspFactory(lspFactory) {
     return lspFactory;
 }
 
-function incrementNonce(state) {
-    let nonce = state.nonce++;
-    // if(crypto.randomInt(10) < 3) {
-    //     // inject a nonce fault
-    //     let oldNonce = nonce;
-    //     nonce = state.nonce++;
-    //     state.pendingTxs.push({hash: "0x845181cb4362fce9560ddc7de6a69ad3a1e65711d9bafae16b52b01d7fd82c5f", nonce: oldNonce});
-    // }
+function nextNonce(state) {
+    let nonce;
+    if(state.droppedNonces.length > 0) {
+        nonce = state.droppedNonces.shift();
+    } else {
+        nonce = state.nonce++;
+    }
     log(`[+] Sending  tx with nonce ${nonce}`, DEBUG);
     return nonce;
 }
@@ -211,7 +210,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
         
         let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
-        nonce = incrementNonce(state);
+        nonce = nextNonce(state);
 
     
         await up.km.methods.execute(abiPayload).send({
@@ -222,18 +221,19 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
         })
         .on('transactionHash', function(hash){
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.txs.push({nonce, hash});
+            state.pendingTxs[nonce] = 0;
         })
         .on('receipt', function(receipt){
             // let totalSupply = await 
             lsp.methods.totalSupply().call().then((totalSupply) => {
                 log(`[+] Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce}`, VERBOSE);
             })
+            delete state.pendingTxs[nonce];
             
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
-            warn(error, INFO);
+            warn(error, VERBOSE);
             let hash = extractHashFromStacktrace(error);
             if (hash) {
                 fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
@@ -245,6 +245,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
             
             if(receipt) {
                 log(receipt, VERBOSE);
+                delete state.pendingTxs[nonce];
             }
         });
     
@@ -274,7 +275,7 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
         // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
         let targetPayload = lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
         
-        let nonce = incrementNonce(state);
+        let nonce = nextNonce(state);
 
         let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
@@ -288,14 +289,15 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
         })
         .on('transactionHash', function(hash){
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.pendingTxs.push({nonce, hash});
+            state.pendingTxs[nonce] = 0;
         })
         .on('receipt', function(receipt){
             log(`[+] Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
+            delete state.pendingTxs[nonce];
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
-            log(error, INFO);
+            log(error, VERBOSE);
             let hash = extractHashFromStacktrace(error);
             if (hash) {
                 fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
@@ -307,6 +309,7 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
             
             if(receipt) {
                 log(receipt, VERBOSE);
+                delete state.pendingTxs[nonce];
             }
         });
     } catch(e) {
