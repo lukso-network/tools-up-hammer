@@ -74,8 +74,7 @@ let state = {
     },
     nonce: null,
     droppedNonces: [],
-    pendingTxs: {},
-    txs: [],
+    pendingTxs: [],
     web3,
     lspFactory,
     DEPLOY_PROXY,
@@ -84,15 +83,6 @@ let state = {
         transfer: EOA_transfer
     }
 }
-
-web3.eth.subscribe('pendingTransactions', function(error, result){
-    if (!error)
-        log(result, INFO);
-})
-.on("data", function(transaction){
-    log(`Subscribed pending: ${transaction.hash}`, INFO);
-    state.mempoolTxs.push(transaction.hash);
-});
 
 async function init(num_to_deploy) {
     for(let i=0; i < num_to_deploy; i++) {
@@ -151,7 +141,10 @@ async function runTransfers() {
     // with you own nonce++
     let next = mchammer.randomIndex(transfer_actions); 
     try {
-        transfer_actions[next](state);
+        if(Object.keys(state.up).length > 0) { 
+            transfer_actions[next](state);    
+        }
+        
     } catch(e) {
         warn(`error during ${transfer_actions[next]}`, INFO);
     }
@@ -161,23 +154,29 @@ async function runTransfers() {
 }
 
 async function checkPendingTx() {
-    
-    let pendingNonces = Object.keys(state.pendingTxs);
-    for(i in pendingNonces) {
-        let nonce = pendingNonces[i]
-        // has this nonce been seen enough as pending that it hits the threshold?
-        if(state.pendingTxs[nonce] >= config.pendingNonceThreshold) {
-            // assume the nonce is dropped and push to dropped nonces
-            state.droppedNonces.push(nonce);
-            // sort the array so earliest nonce is first
+    let txsToRemove = [];
+    for(let i=0; i<state.pendingTxs.length; i++) {
+        // we do this with promises, then the indexes get messed up when transactions are removed
+        // from the array asynchronously
+        // so using await unless a better solution came be found.
+        // this runs in its own thread though, so won't affect the transfers
+        let tx = await web3.eth.getTransaction(state.pendingTxs[i].hash);
+        if(!tx) {
+            // tx is dropped
+            if(i >= state.pendingTxs.length) {
+                console.log('????');
+            }
+            state.droppedNonces.push(state.pendingTxs[i].nonce);
             state.droppedNonces.sort();
-            // delete from pending because it will get replayed
-            delete state.pendingTxs[nonce];
-        } else {
-            // otherwise increment we've seen the nonce
-            state.pendingTxs[nonce]++;
+            txsToRemove.push(i);
+        } else if(tx.blockNumber) {
+            // tx is mined
+            txsToRemove.push(i);
         }
-        
+    }
+    // remove the indices after the entire pendingTxs array has been gone through
+    for(let j=0; j<txsToRemove.length;j++) {
+        state.pendingTxs.splice(txsToRemove[j], 1);
     }
 
 }
@@ -185,7 +184,9 @@ async function checkPendingTx() {
 async function nonceCheck() {
     
     while(true) {
-        checkPendingTx();
+        // checkPendingTx needs to complete before running a second time
+        // otherwise the next run will have smaller indices than the first
+        await checkPendingTx();
         await delay(config.nonceCheckDelay);
     }
 }

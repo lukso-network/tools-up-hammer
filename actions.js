@@ -46,6 +46,9 @@ async function loop_deployLSP7(state) {
             lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, config.presets[config.wallets.deploy.address].lsp7[preset]);
             erc725_address = config.wallets.deploy.address; //await lsp7_asset.methods.owner().call();
         } else {
+            if(Object.keys(up).length == 0 ) {
+                return;
+            }
             erc725_address = mchammer.randomKey(up); 
             lsp7_asset = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA, state);
         }

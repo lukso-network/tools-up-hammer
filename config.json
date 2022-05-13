@@ -12,12 +12,12 @@
         }
     },
     "deployLimits": {
-        "up": 50,
-        "lsp7": 25,
-        "lsp8": 25
+        "up": 5,
+        "lsp7": 5,
+        "lsp8": 5
     },
     "maxDelay": 100,
-    "nonceCheckDelay": 1000,
+    "nonceCheckDelay": 5000,
     "pendingNonceThreshold": 5, 
     "dev_loop" : [
         "loop_deployLSP7",

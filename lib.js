@@ -91,18 +91,24 @@ async function deploy(lspFactory) {
             {
                 ERC725Account: {
                     deployProxy: config.deployProxy,
+                    gas: 5_000_000,
+                    gasPrice: '1000000000',
                 },
                 UniversalReceiverDelegate: {
                     deployProxy: config.deployProxy,
+                    gas: 5_000_000,
+                    gasPrice: '1000000000',
                 },
                 KeyManager: {
                     deployProxy: config.deployProxy, 
+                    gas: 5_000_000,
+                    gasPrice: '1000000000',
                 }
             })
     
         return up;
     } catch(e) {
-        warn("Error during UP Deployment", WARN);
+        warn("Error during UP Deployment", INFO);
         console.log(e);
     }
     
@@ -144,6 +150,9 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
             symbol: "TKN",
             controllerAddress: owner_address, // Account which will own the Token Contract
             isNFT: false,
+        },
+        {
+            
         })
         
         const lsp7 = new web3.eth.Contract(
@@ -221,14 +230,15 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
         })
         .on('transactionHash', function(hash){
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.pendingTxs[nonce] = 0;
+            state.pendingTxs.push({hash, nonce});
         })
         .on('receipt', function(receipt){
             // let totalSupply = await 
             lsp.methods.totalSupply().call().then((totalSupply) => {
                 log(`[+] Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce}`, VERBOSE);
             })
-            delete state.pendingTxs[nonce];
+            // delete pendingTxs
+            // delete state.pendingTxs[nonce];
             
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
@@ -245,7 +255,6 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
             
             if(receipt) {
                 log(receipt, VERBOSE);
-                delete state.pendingTxs[nonce];
             }
         });
     
@@ -289,11 +298,11 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
         })
         .on('transactionHash', function(hash){
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.pendingTxs[nonce] = 0;
+            state.pendingTxs.push({nonce, hash});
         })
         .on('receipt', function(receipt){
             log(`[+] Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
-            delete state.pendingTxs[nonce];
+            // delete state.pendingTxs[nonce];
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
@@ -309,7 +318,7 @@ async function transfer(lsp, _from, _to, amount, up, state ) {
             
             if(receipt) {
                 log(receipt, VERBOSE);
-                delete state.pendingTxs[nonce];
+                // delete state.pendingTxs[nonce];
             }
         });
     } catch(e) {
