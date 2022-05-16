@@ -40,14 +40,21 @@ function nextNonce(state) {
 
 async function initUP(state) {
     let {lspFactory, web3 } = state;
+
+    lspFactory = reinitLspFactory(lspFactory);
+
     let erc725_address, erc725;
     let km_address, km;
     let up, deployed;
-    if(config.presets[config.wallets.deploy.address].up.length > 0 && !state.up[config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS]) {
+    if(config.presets[config.wallets.deploy.address]
+        && config.presets[config.wallets.deploy.address].up.length > 0 
+        && !state.up[config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS]) {
         log(`[+] Found UP addresses. Skipping deployments`, VERBOSE);
         erc725_address = config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[0].KEYMANAGER_ADDRESS;
-    } else if(config.presets[config.wallets.deploy.address].up.length > 1 && !state.up[config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS]) {
+    } else if(config.presets[config.wallets.deploy.address] 
+        && config.presets[config.wallets.deploy.address].up.length > 1 
+        && !state.up[config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS]) {
         log(`[+] Found Secondary UP. Skipping deployments`, VERBOSE);
         erc725_address = config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[1].KEYMANAGER_ADDRESS;

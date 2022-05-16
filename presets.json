@@ -1,6 +1,6 @@
 {
     "0x765a96536a940e59ec0A48C8F674a5542eB9A058": {
-        "up": [
+        "l14up": [
             {
                 "ERC725_ADDRESS": "0xB22Ff7A3B7b26187E8de6aD177dC8eDd932F1b13",
                 "KEYMANAGER_ADDRESS": "0x9A171D8EA32dd5cE4464eB9bFd70Ad186915ea90"
@@ -10,6 +10,7 @@
                 "KEYMANAGER_ADDRESS": "0x79C755BE9F9A985dC2C73996b1f275302c319a71"
             }
         ],
+        "up": [],
         "lsp7": [],
         "lsp8": []
     }

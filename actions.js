@@ -41,7 +41,8 @@ async function loop_deployLSP7(state) {
         let {lspFactory, web3, EOA, up, lsp7} = state;
         let lsp7_asset, erc725_address;
 
-        if(Object.keys(lsp7.addresses).length < config.presets[config.wallets.deploy.address].lsp7.length) {
+        if(config.presets[config.wallets.deploy.address] &&
+            Object.keys(lsp7.addresses).length < config.presets[config.wallets.deploy.address].lsp7.length) {
             let preset = Object.keys(lsp7.addresses).length;
             lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, config.presets[config.wallets.deploy.address].lsp7[preset]);
             erc725_address = config.wallets.deploy.address; //await lsp7_asset.methods.owner().call();
@@ -73,7 +74,8 @@ async function loop_deployLSP8(state) {
         let totalSupply = 0; 
         let currentId = 0;
 
-        if(Object.keys(lsp8.addresses).length < config.presets[config.wallets.deploy.address].lsp8.length) {
+        if(config.presets[config.wallets.deploy.address] &&
+            Object.keys(lsp8.addresses).length < config.presets[config.wallets.deploy.address].lsp8.length) {
             let preset = Object.keys(lsp8.addresses).length;
             lsp8_asset = new web3.eth.Contract(LSP7Mintable.abi, config.presets[config.wallets.deploy.address].lsp8[preset]);
             erc725_address = await lsp8_asset.methods.owner().call();

@@ -1,14 +1,16 @@
 {
-    "provider": "https://rpc.l14.lukso.network",
-    "chainId": 22,
+    "l14provider": "https://rpc.l14.lukso.network",
+    "l14chainId": 22,
+    "provider": "https://rpc.11111111.l16.lukso.network/",
+    "chainId": 11111111,
     "wallets": {
-        "deploy": {
-            "address": "0x765a96536a940e59ec0A48C8F674a5542eB9A058",
-            "privateKey": "0x7fe0612cdd3ecdf700ac7d983c1815567838c6352b66a05ccf2405242fc06c01"
-        },
         "transfer": {
             "address": "0x32072f29eb14Cb8E8B0daeBb9370D3C7B139a17f",
             "privateKey": "0x0de6b88273ba77d20a3cb803167ec4a1c9faed0d6f8dbd4c625b3d98af3f8fdc"
+        },
+        "deploy": {
+            "address": "0x4F1250358aBC2Bf7EECf4054A46B368Bf055330B",
+            "privateKey": "0x8f8c5666f28382181cda6181c4ba549e5ffd9582ea88508053f149ff19527450"
         }
     },
     "deployLimits": {
@@ -25,9 +27,9 @@
         "loop_mintLSP8",
         "loop_mintLSP7"
     ],
-    "logLevel": 2,
+    "logLevel": 1,
     "txErrorLog": "./txErrors",
-    "deployProxy": true,
+    "deployProxy": false,
     "initialUPs": 2,
     "presets": {}
 }
