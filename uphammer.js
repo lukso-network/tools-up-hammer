@@ -1,12 +1,12 @@
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
-const LSP7DigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json');
-const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
-const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
-const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
+// const LSP7DigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json');
+// const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
+// const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
+// const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 // require('dotenv').config();
 const Web3 = require('web3');
-const ethers = require("ethers");
-const yargs = require('yargs');
+// const ethers = require("ethers");
+
 const crypto = require('crypto');
 const delay = require('await-delay');
 
@@ -21,213 +21,201 @@ const VERBOSE = require("./logging").VERBOSE;
 const INFO = require("./logging").INFO;
 const QUIET = require("./logging").QUIET
 
-var argv = yargs(process.argv.slice(2))
-    .usage('Usage: $0 [--noproxies] [--network 14|16] [-u <number of UPs>')
-    .boolean(['noproxies'])
-    .default('noproxies', true)
-    .option('network', {
-        alias: 'l',
-        description: "l14 or l16 network, defaults to l16",
-        default: '16'
-        })
-    .option('numups', {
-        alias: 'u',
-        description: "Number of UPs to deploy",
-        default: 2
-    })
-    .argv;
+class UPHammer {
 
+    deploy_actions = [
+        actions.loop_deployUP,
+        actions.loop_deployLSP7,
+        actions.loop_deployLSP8,
+    ]
+    
+    transfer_actions = [
+        actions.loop_transferLSP7,
+        actions.loop_transferAllLSP7,
+        actions.loop_transferLSP8,
+        actions.loop_mintLSP7,
+        actions.loop_mintLSP8,
+    ];
+    constructor(user_config, user_presets) {
+        // merge config
+        this.config = config;
+        this.mergeConfig(user_config);
 
-const L16 = 'https://rpc.beta.l16.lukso.network/';
-const L14 = 'https://rpc.l14.lukso.network';
+        this.provider = this.config.provider; 
+        log(`[+] Provider is ${this.provider}`, INFO);
+        // web3 is used for transferring and minting, not deployments
+        this.web3 = new Web3(this.provider, this.config.wallets.transfer.privateKey);
+        const EOA_transfer = this.web3.eth.accounts.wallet.add(this.config.wallets.transfer.privateKey);
+        
+        // EOA is used for deployments
+        const EOA_deploy = this.web3.eth.accounts.wallet.add(this.config.wallets.deploy.privateKey);
+        
+        
+        const DEPLOY_PROXY = this.config.deployProxy;
+        
+        this.lspFactory = new LSPFactory(this.provider, {
+          deployKey: this.config.wallets.deploy.privateKey, // Private key of the account which will deploy UPs
+          chainId: this.config.chainId, // Chain Id of the network you want to connect to
+        });
+        
+        
+        this.config.presets = user_presets;
+        
+        
+        this.state = {
+            up: {},
+            lsp7: {
+                transferable: false,
+                addresses: {}
+            },
+            lsp8: {
+                transferable: false,
+                addresses: {}
+            },
+            nonce: null,
+            droppedNonces: [],
+            pendingTxs: [],
+            web3: this.web3,
+            lspFactory: this.lspFactory,
+            DEPLOY_PROXY,
+            EOA: {
+                deploy: EOA_deploy,
+                transfer: EOA_transfer
+            }
+        }
 
-const provider = config.provider; // (argv.network && parseInt(argv.network) === 14) ? L14 : L16; //'http://34.90.30.203:8545'; //; // RPC url used to connect to the network
-console.log(`[+] Provider is ${provider}`);
-// web3 is used for transferring and minting, not deployments
-const web3 = new Web3(provider, config.wallets.transfer.privateKey);
-const EOA_transfer = web3.eth.accounts.wallet.add(config.wallets.transfer.privateKey);
-
-// EOA is used for deployments
-const EOA_deploy = web3.eth.accounts.wallet.add(config.wallets.deploy.privateKey);
-
-
-const DEPLOY_PROXY = argv.proxies
-
-const lspFactory = new LSPFactory(provider, {
-  deployKey: config.wallets.deploy.privateKey, // Private key of the account which will deploy UPs
-  chainId: config.chainId, // Chain Id of the network you want to connect to
-});
-
-
-config.presets = presets;
-
-
-let state = {
-    up: {},
-    lsp7: {
-        transferable: false,
-        addresses: {}
-    },
-    lsp8: {
-        transferable: false,
-        addresses: {}
-    },
-    nonce: null,
-    droppedNonces: [],
-    pendingTxs: [],
-    web3,
-    lspFactory,
-    DEPLOY_PROXY,
-    EOA: {
-        deploy: EOA_deploy,
-        transfer: EOA_transfer
+        
     }
-}
 
-async function init(num_to_deploy) {
-    for(let i=0; i < num_to_deploy; i++) {
-        await mchammer.initUP(state);
-    }
- 
-}
-
-const deploy_actions = [
-    actions.loop_deployUP,
-    actions.loop_deployLSP7,
-    actions.loop_deployLSP8,
-]
-
-const transfer_actions = [
-    actions.loop_transferLSP7,
-    actions.loop_transferAllLSP7,
-    actions.loop_transferLSP8,
-    actions.loop_mintLSP7,
-    actions.loop_mintLSP8,
-];
-
-function continueDeployments() {
-    let _continue = false;
-    if(Object.keys(state.up).length <= config.deployLimits.up
-        && Object.keys(state.lsp7.addresses).length <= config.deployLimits.lsp7
-        && Object.keys(state.lsp8.addresses).length <= config.deployLimits.lsp8)
-    {
-        _continue = true;
-    }
-    return _continue;
-}
-
-async function deployActors() {
-    for(const action of config.dev_loop) {
-        await actions[action](state);
-    }
-    while(continueDeployments()) {
-        let next = mchammer.randomIndex(deploy_actions); 
-        try {
-            await deploy_actions[next](state);
-        } catch (e) {
-            warn(`Error during ${deploy_actions[next]}`, INFO);
+    mergeConfig = function(user_config) {
+        for(let setting in user_config) {
+            this.config[setting] = user_config[setting];
         }
     }
-}
 
-async function runTransfers() {
-    while(true) {
-        // pick task
-        // read let ups = []
-        // let tokens = []
-        // let nfts =  []
-    // check balance
-    // call transfer on token, throughb UP and keymanager
-    // with you own nonce++
-    let next = mchammer.randomIndex(transfer_actions); 
-    try {
-        if(Object.keys(state.up).length > 0) { 
-            transfer_actions[next](state);    
+    init = async function(num_to_deploy) {
+        for(let i=0; i < num_to_deploy; i++) {
+            await mchammer.initUP(this.state);
+        }
+     
+    }
+
+    continueDeployments = function () {
+        let _continue = false;
+        if(Object.keys(this.state.up).length <= this.config.deployLimits.up
+            && Object.keys(this.state.lsp7.addresses).length <= this.config.deployLimits.lsp7
+            && Object.keys(this.state.lsp8.addresses).length <= this.config.deployLimits.lsp8)
+        {
+            _continue = true;
+        }
+        return _continue;
+    }
+
+    deployActors = async function () {
+        for(const action of this.config.dev_loop) {
+            await actions[action](this.state);
+        }
+        while(this.continueDeployments()) {
+            let next = mchammer.randomIndex(this.deploy_actions); 
+            try {
+                await this.deploy_actions[next](this.state);
+            } catch (e) {
+                warn(`Error during ${this.deploy_actions[next]}`, INFO);
+            }
+        }
+    }
+
+    runTransfers = async function () {
+        while(true) {
+
+            let next = mchammer.randomIndex(this.transfer_actions); 
+            try {
+                if(Object.keys(this.state.up).length > 0) { 
+                    this.transfer_actions[next](state);    
+                }
+                
+            } catch(e) {
+                warn(`error during ${this.transfer_actions[next]}`, INFO);
+            }
+            
+            await delay(crypto.randomInt(this.config.maxDelay))
+        }
+    }
+
+    checkPendingTx = async function () {
+        let txsToRemove = [];
+        for(let i=0; i<this.state.pendingTxs.length; i++) {
+            // we do this with promises, then the indexes get messed up when transactions are removed
+            // from the array asynchronously
+            // so using await unless a better solution came be found.
+            // this runs in its own thread though, so won't affect the transfers
+            let tx = await this.web3.eth.getTransaction(this.state.pendingTxs[i].hash);
+            if(!tx) {
+                // tx is dropped
+                if(i >= this.state.pendingTxs.length) {
+                    console.log('????');
+                }
+                this.state.droppedNonces.push(state.pendingTxs[i].nonce);
+                this.state.droppedNonces.sort();
+                txsToRemove.push(i);
+            } else if(tx.blockNumber) {
+                // tx is mined
+                txsToRemove.push(i);
+            }
+        }
+        // remove the indices after the entire pendingTxs array has been gone through
+        for(let j=0; j<txsToRemove.length;j++) {
+            this.state.pendingTxs.splice(txsToRemove[j], 1);
+        }
+    
+    }
+
+    nonceCheck = async function () {
+    
+        while(true) {
+            // checkPendingTx needs to complete before running a second time
+            // otherwise the next run will have smaller indices than the first
+            await this.checkPendingTx();
+            await delay(config.nonceCheckDelay);
+        }
+    }
+
+    checkBalance = async function (wallet) {
+        log(`Checking ${wallet} balance...`, INFO);
+        if(this.config.wallets[wallet] === undefined) {
+            warn(`${wallet} wallet is not properly configured`, QUIET);
+        }
+        let address = this.config.wallets[wallet].address;
+        let balance = await this.web3.eth.getBalance(address);
+        log(`Balance: ${balance}`, INFO);
+        if (balance === '0') {
+            warn(`[!] Go get some gas for ${this.config.wallets[wallet].address}`);
+            // if(provider === L14) {
+            //     warn('http://faucet.l14.lukso.network/', INFO);    
+            // } else {
+            //     warn('http://faucet.11111111.l16.lukso.network/', INFO);
+            // } 
+            return false;
+        }
+        return true;
+    }
+    
+    start = async function () {
+        let deploy_balance = await this.checkBalance("deploy");
+        let transfer_balance = await this.checkBalance("transfer");
+        if(!deploy_balance || !transfer_balance) {
+            process.exit();
         }
         
-    } catch(e) {
-        warn(`error during ${transfer_actions[next]}`, INFO);
-    }
-    
-    await delay(crypto.randomInt(config.maxDelay))
-    }
-}
-
-async function checkPendingTx() {
-    let txsToRemove = [];
-    for(let i=0; i<state.pendingTxs.length; i++) {
-        // we do this with promises, then the indexes get messed up when transactions are removed
-        // from the array asynchronously
-        // so using await unless a better solution came be found.
-        // this runs in its own thread though, so won't affect the transfers
-        let tx = await web3.eth.getTransaction(state.pendingTxs[i].hash);
-        if(!tx) {
-            // tx is dropped
-            if(i >= state.pendingTxs.length) {
-                console.log('????');
-            }
-            state.droppedNonces.push(state.pendingTxs[i].nonce);
-            state.droppedNonces.sort();
-            txsToRemove.push(i);
-        } else if(tx.blockNumber) {
-            // tx is mined
-            txsToRemove.push(i);
-        }
-    }
-    // remove the indices after the entire pendingTxs array has been gone through
-    for(let j=0; j<txsToRemove.length;j++) {
-        state.pendingTxs.splice(txsToRemove[j], 1);
-    }
-
-}
-
-async function nonceCheck() {
-    
-    while(true) {
-        // checkPendingTx needs to complete before running a second time
-        // otherwise the next run will have smaller indices than the first
-        await checkPendingTx();
-        await delay(config.nonceCheckDelay);
+        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
+        log(`[+] Transfer Wallet Nonce is ${this.state.nonce}`, INFO);
+        await this.init(this.config.initialUPs);
+        // console.log(state);
+        
+        this.nonceCheck();
+        this.runTransfers();
+        this.deployActors();
     }
 }
 
-async function checkBalance(wallet) {
-    log(`Checking ${wallet} balance...`, INFO);
-    if(config.wallets[wallet] === undefined) {
-        warn(`${wallet} wallet is not properly configured`, QUIET);
-    }
-    let address = config.wallets[wallet].address;
-    let balance = await web3.eth.getBalance(address);
-    log(`Balance: ${balance}`, INFO);
-    if (balance === '0') {
-        warn(`[!] Go get some gas for ${config.wallets[wallet].address}`);
-        if(provider === L14) {
-            warn('http://faucet.l14.lukso.network/', INFO);    
-        } else {
-            warn('http://faucet.11111111.l16.lukso.network/', INFO);
-        } 
-        return false;
-    }
-    return true;
-}
-
-async function start() {
-    let deploy_balance = await checkBalance("deploy");
-    let transfer_balance = await checkBalance("transfer");
-    if(!deploy_balance || !transfer_balance) {
-        process.exit();
-    }
-    
-    state.nonce = await web3.eth.getTransactionCount(config.wallets.transfer.address, "pending");
-    log(`[+] Transfer Wallet Nonce is ${state.nonce}`, INFO);
-    await init(config.initialUPs);
-    console.log(state);
-    
-    nonceCheck();
-    runTransfers();
-    deployActors();
-    
-    
-}
-
-start();
+module.exports = UPHammer;
