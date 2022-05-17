@@ -131,7 +131,7 @@ class UPHammer {
             let next = mchammer.randomIndex(this.transfer_actions); 
             try {
                 if(Object.keys(this.state.up).length > 0) { 
-                    this.transfer_actions[next](state);    
+                    this.transfer_actions[next](this.state);    
                 }
                 
             } catch(e) {
@@ -152,10 +152,8 @@ class UPHammer {
             let tx = await this.web3.eth.getTransaction(this.state.pendingTxs[i].hash);
             if(!tx) {
                 // tx is dropped
-                if(i >= this.state.pendingTxs.length) {
-                    console.log('????');
-                }
-                this.state.droppedNonces.push(state.pendingTxs[i].nonce);
+                
+                this.state.droppedNonces.push(this.state.pendingTxs[i].nonce);
                 this.state.droppedNonces.sort();
                 txsToRemove.push(i);
             } else if(tx.blockNumber) {
