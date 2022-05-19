@@ -19,10 +19,10 @@ const QUIET = require("./logging").QUIET
 
 const OPERATION_CALL = 0;
 
-function reinitLspFactory(lspFactory) {
+function reinitLspFactory(lspFactory, config) {
     lspFactory = new LSPFactory(lspFactory.options.provider, {
         deployKey: config.wallets.deploy.privateKey, // Private key of the account which will deploy UPs
-        chainId: 22, // Chain Id of the network you want to connect to
+        chainId: config.chainId // Chain Id of the network you want to connect to
       });
     return lspFactory;
 }
@@ -39,9 +39,9 @@ function nextNonce(state) {
 }
 
 async function initUP(state) {
-    let {lspFactory, web3 } = state;
+    let {lspFactory, web3, config } = state;
 
-    lspFactory = reinitLspFactory(lspFactory);
+    lspFactory = reinitLspFactory(lspFactory, config);
 
     let erc725_address, erc725;
     let km_address, km;
@@ -60,7 +60,7 @@ async function initUP(state) {
         km_address = config.presets[config.wallets.deploy.address].up[1].KEYMANAGER_ADDRESS;
     } else {
         log(`[+] Deploying Profile`, VERBOSE);
-        deployed = await deploy(lspFactory);
+        deployed = await deploy(lspFactory, config);
         if(deployed) {
             erc725_address = deployed.ERC725Account.address;
             km_address = deployed.KeyManager.address;
@@ -81,8 +81,8 @@ async function initUP(state) {
 }
 
 // Deploy LSP3 Account
-async function deploy(lspFactory) {
-    lspFactory = reinitLspFactory(lspFactory);
+async function deploy(lspFactory, config) {
+    lspFactory = reinitLspFactory(lspFactory, config);
 
     let controller_addresses = [
         config.wallets.deploy.address,
@@ -98,20 +98,23 @@ async function deploy(lspFactory) {
             {
                 ERC725Account: {
                     deployProxy: config.deployProxy,
-                    gas: 5_000_000,
-                    gasPrice: '1000000000',
                 },
                 UniversalReceiverDelegate: {
                     deployProxy: config.deployProxy,
-                    gas: 5_000_000,
-                    gasPrice: '1000000000',
                 },
                 KeyManager: {
                     deployProxy: config.deployProxy, 
-                    gas: 5_000_000,
-                    gasPrice: '1000000000',
-                }
+                },
+                // deployReactive: true
             })
+            // .subscribe({
+            //     next: (deploymentEvent) => {
+            //       console.log(deploymentEvent);
+            //     },
+            //     complete: () => {
+            //       console.log('Digital Asset deployment completed');
+            //     },
+            //   });
     
         return up;
     } catch(e) {
@@ -122,25 +125,51 @@ async function deploy(lspFactory) {
 }
 
 async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
-    lspFactory = reinitLspFactory(lspFactory);
+    lspFactory = reinitLspFactory(lspFactory, state.config);
 
-    // let nonce = incrementNonce(state);
     try {
         const lsp8_asset = await lspFactory.LSP8IdentifiableDigitalAsset.deploy({
             name: "My token",
             symbol: "TKN",
             controllerAddress: owner_address, // Account which will own the Token Contract
-        });
+        },
+        {
+            deployReactive: state.config.deployReactive,
+            deployProxy: state.config.deployProxy
+        })
+
+        if(state.config.deployReactive) {
+            lsp8_asset.subscribe({
+                next: (deploymentEvent) => {
+                  console.log(deploymentEvent);
     
-        const lsp8 = new web3.eth.Contract(
-            LSP8IdentifiableDigitalAsset.abi,
-            lsp8_asset.LSP8IdentifiableDigitalAsset.address,
-            {
-                from: EOA.deploy.address
-            }
-        );
+                },
+                complete: () => {
+                    state.deploying = false;
+                    console.log('Digital Asset deployment completed');
+                    const lsp8 = new web3.eth.Contract(
+                        LSP8IdentifiableDigitalAsset.abi,
+                        lsp8_asset.LSP8IdentifiableDigitalAsset.address,
+                        {
+                            from: EOA.deploy.address
+                        }
+                    );
+                },
+              });
+        } else {
+            const lsp8 = new web3.eth.Contract(
+                LSP8IdentifiableDigitalAsset.abi,
+                lsp8_asset.LSP8IdentifiableDigitalAsset.address,
+                {
+                    from: EOA.deploy.address
+                }
+            );
+            return lsp8;
+        }
+        
     
-        return lsp8;
+        
+        
     } catch (e) {
         warn("Error during LSP8 Deployment", INFO);
     }
@@ -148,7 +177,7 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
 }
 
 async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
-    lspFactory = reinitLspFactory(lspFactory);
+    lspFactory = reinitLspFactory(lspFactory, state.config);
     
     // let nonce = incrementNonce(state);
     try {
@@ -159,7 +188,7 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
             isNFT: false,
         },
         {
-            
+            deployProxy: state.config.deployProxy
         })
         
         const lsp7 = new web3.eth.Contract(
@@ -169,7 +198,9 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
                 from: EOA.deploy.address
             }
         );
-        
+
+        state.deploying = false;
+
         return lsp7;
     } catch(e) {
         warn("Error during LSP7 Deployment", INFO);
@@ -205,7 +236,7 @@ async function doMint(type, abi, state) {
         }
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         
-        await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state);
+        await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state, type.toUpperCase());
         state[type].transferable = true;
         if(type==='lsp7') {
             state[type].addresses[asset_address].totalSupply += mint_amt_or_id;
@@ -219,7 +250,7 @@ async function doMint(type, abi, state) {
 }
 
 //https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
-async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
+async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
     let nonce;
     try {
         let targetPayload = await lsp.methods.mint(up_address, amt_or_id, false, '0x').encodeABI();
@@ -227,8 +258,10 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
         let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
         nonce = nextNonce(state);
-
-    
+        log(`[+] Minting more ${type} (${nonce})`, VERBOSE);
+        let gasPriceWei = await state.web3.eth.getGasPrice();
+        // let gasWei = await up.km.methods.execute(abiPayload).estimateGas();
+        
         await up.km.methods.execute(abiPayload).send({
             from: EOA.transfer.address, 
             gas: 5_000_000,
@@ -240,16 +273,15 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
             state.pendingTxs.push({hash, nonce});
         })
         .on('receipt', function(receipt){
-            // let totalSupply = await 
+            
             lsp.methods.totalSupply().call().then((totalSupply) => {
                 log(`[+] Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce}`, VERBOSE);
             })
-            // delete pendingTxs
-            // delete state.pendingTxs[nonce];
+            
             
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-            warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
+            warn(`[!] Minting Error. Nonce ${nonce}`, INFO);
             warn(error, VERBOSE);
             let hash = extractHashFromStacktrace(error);
             if (hash) {
@@ -269,6 +301,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state) {
         
     } catch(e) {
         warn(`[!] Error during minting. Nonce ${nonce}`, INFO);
+        console.log(e);
     }
     
 }
@@ -286,13 +319,13 @@ function extractHashFromStacktrace(error) {
     return parsed.transactionHash;
 }
 
-async function transfer(lsp, _from, _to, amount, up, state ) {
+async function transfer(lsp, _from, _to, amount, up, state, type ) {
     try {
         // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
         let targetPayload = lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
         
         let nonce = nextNonce(state);
-
+        log(`[+] Transfering ${type.toUpperCase()} (${nonce})`, VERBOSE);
         let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
         log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`, DEBUG);
