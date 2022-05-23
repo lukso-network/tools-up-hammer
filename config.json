@@ -12,22 +12,27 @@
         }
     },
     "deployLimits": {
-        "up": 5,
-        "lsp7": 5,
-        "lsp8": 5
+        "up": 25,
+        "lsp7": 25,
+        "lsp8": 25
     },
     "maxDelay": 100,
+    "deploymentDelay": 10000,
     "nonceCheckDelay": 5000,
     "pendingNonceThreshold": 5, 
     "dev_loop" : [
         "loop_deployLSP7",
-        "loop_deployLSP8",
+        "loop_deployLSP7",
         "loop_mintLSP8",
         "loop_mintLSP7"
     ],
     "logLevel": 2,
     "txErrorLog": "./txErrors",
+    "txTransactionLog": "./txLog",
     "deployProxy": true,
     "initialUPs": 2,
-    "presets": {}
+    "presets": {},
+    "deployReactive": false,
+    "defaultGasPrice": "1000000000",
+    "gasIncrement": 1
 }

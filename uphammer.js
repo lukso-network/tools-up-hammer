@@ -75,7 +75,9 @@ class UPHammer {
             },
             nonce: null,
             droppedNonces: [],
+            incrementGasPrice: [],
             pendingTxs: [],
+            stubbornNonces: [],
             web3: this.web3,
             lspFactory: this.lspFactory,
             DEPLOY_PROXY,
@@ -221,7 +223,7 @@ class UPHammer {
             process.exit();
         }
         
-        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
+        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
         log(`[+] Transfer Wallet Nonce is ${this.state.nonce}`, INFO);
         await this.init(this.config.initialUPs);
         // console.log(state);

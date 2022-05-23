@@ -198,7 +198,7 @@ async function do_transferLSP7(state, tx_amt_type) {
 
 
 async function loop_transferLSP8(state) {
-    log(`[+] Transfering LSP8`, VERBOSE);
+    log(`[+] Transfering LSP8`, DEBUG);
     let {web3, EOA, up, lsp8} = state;
     try {
         if(lsp8.transferable) {

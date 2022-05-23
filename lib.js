@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const fs = require('fs');
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
@@ -16,6 +15,13 @@ const VERBOSE = require("./logging").VERBOSE;
 const INFO = require("./logging").INFO;
 const QUIET = require("./logging").QUIET
 
+const nextNonce = require("./utils").nextNonce;
+const replayAndIncrementGasPrice = require("./utils").replayAndIncrementGasPrice;
+const extractHashFromStacktrace = require("./utils").extractHashFromStacktrace;
+const randomIndex = require("./utils").randomIndex;
+const randomKey = require("./utils").randomKey;
+const logTx = require("./utils").logTx;
+
 
 const OPERATION_CALL = 0;
 
@@ -27,16 +33,7 @@ function reinitLspFactory(lspFactory, config) {
     return lspFactory;
 }
 
-function nextNonce(state) {
-    let nonce;
-    if(state.droppedNonces.length > 0) {
-        nonce = state.droppedNonces.shift();
-    } else {
-        nonce = state.nonce++;
-    }
-    log(`[+] Sending  tx with nonce ${nonce}`, DEBUG);
-    return nonce;
-}
+
 
 async function initUP(state) {
     let {lspFactory, web3, config } = state;
@@ -232,7 +229,8 @@ async function doMint(type, abi, state) {
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         if(!up[erc725_address]) {
-            console.log('wtf is going on');
+            // state of up is not right. abort
+            return;
         }
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         
@@ -251,21 +249,31 @@ async function doMint(type, abi, state) {
 
 //https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
 async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
-    let nonce;
+    let next, nonce, gasPrice;
     try {
         let targetPayload = await lsp.methods.mint(up_address, amt_or_id, false, '0x').encodeABI();
         
         let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
-        nonce = nextNonce(state);
+        // default gasPrice
+        let defaultGasPrice = state.config.defaultGasPrice;
+
+        next = nextNonce(state);
+        nonce = next.nonce;
+        gasPrice = next.gasPrice? next.gasPrice: defaultGasPrice;
+
         log(`[+] Minting more ${type} (${nonce})`, VERBOSE);
         let gasPriceWei = await state.web3.eth.getGasPrice();
-        // let gasWei = await up.km.methods.execute(abiPayload).estimateGas();
+        // let gasWei = await up.km.methods.execute(abiPayload).estimateGas()
         
+        if(next.gasPrice) {
+            log(`Replaying ${nonce} with gasPrice ${gasPrice}`, INFO);
+        }
+
         await up.km.methods.execute(abiPayload).send({
             from: EOA.transfer.address, 
             gas: 5_000_000,
-            gasPrice: '1000000000',
+            gasPrice,
             nonce
         })
         .on('transactionHash', function(hash){
@@ -273,16 +281,23 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             state.pendingTxs.push({hash, nonce});
         })
         .on('receipt', function(receipt){
-            
-            lsp.methods.totalSupply().call().then((totalSupply) => {
-                log(`[+] Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce}`, VERBOSE);
-            })
+            try {
+                lsp.methods.totalSupply().call().then((totalSupply) => {
+                    log(`Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce} Tx ${receipt.transactionHash}`, INFO);
+                })
+            } catch(e) {
+                log(`Minted tokens to ${lsp._address} Nonce ${nonce} Tx ${receipt.transactionHash}`, INFO);
+            }
+            logTx(config.txTransactionLog, receipt.transactionHash, nonce);
             
             
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-            warn(`[!] Minting Error. Nonce ${nonce}`, INFO);
+            warn(`[!] Minting Error. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
             warn(error, VERBOSE);
+            if(error.toString().includes("replacement transaction underpriced")) {
+                replayAndIncrementGasPrice(state, nonce, gasPrice);
+            }
             let hash = extractHashFromStacktrace(error);
             if (hash) {
                 fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
@@ -296,27 +311,15 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
                 log(receipt, VERBOSE);
             }
         });
-    
-        
         
     } catch(e) {
-        warn(`[!] Error during minting. Nonce ${nonce}`, INFO);
+        warn(`[!] Error during minting. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         console.log(e);
+        if(e.toString().includes("replacement transaction underpriced")) {
+            replayAndIncrementGasPrice(state, nonce, gasPrice);
+        }
     }
     
-}
-
-function extractHashFromStacktrace(error) {
-    let startIdx = error.stack.indexOf("{");
-    let endIdx = error.stack.lastIndexOf("}") + 1;
-    let parsed;
-    try {
-        parsed = JSON.parse(error.stack.slice(startIdx, endIdx));
-    } catch(e) {
-        return false;
-    }
-    
-    return parsed.transactionHash;
 }
 
 async function transfer(lsp, _from, _to, amount, up, state, type ) {
@@ -342,7 +345,7 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         })
         .on('receipt', function(receipt){
             log(`[+] Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
-            // delete state.pendingTxs[nonce];
+            logTx(config.txTransactionLog, receipt.transactionHash, nonce);
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
@@ -362,19 +365,12 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
             }
         });
     } catch(e) {
-        warn(e, INFO);
+        console.log(e, INFO);
     }
     
 }
 
-function randomIndex(obj) {
-    return crypto.randomInt(Object.keys(obj).length);
-}
 
-function randomKey(obj) {
-    let idx = randomIndex(obj);
-    return Object.keys(obj)[idx];
-}
 module.exports = {
     mint,
     deploy,
