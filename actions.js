@@ -14,10 +14,10 @@ const INFO = require("./logging").INFO;
 const QUIET = require("./logging").QUIET
 
 async function loop_deployUP(state) {
-    if(Object.keys(state.up).length <= config.deployLimits.up) {
+    if(Object.keys(state.up).length <= state.config.deployLimits.up) {
         console.log(`[+] Deploying new UP`);
-        let {lspFactory, web3, EOA, up} = state;
-        let deployed = await mchammer.deploy(lspFactory);
+        let {lspFactory, web3, EOA, up, config} = state;
+        let deployed = await mchammer.deploy(lspFactory, config);
         
         if(deployed) {
             let erc725_address = deployed.ERC725Account.address;
@@ -45,7 +45,12 @@ async function loop_deployLSP7(state) {
             Object.keys(lsp7.addresses).length < config.presets[config.wallets.deploy.address].lsp7.length) {
             let preset = Object.keys(lsp7.addresses).length;
             lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, config.presets[config.wallets.deploy.address].lsp7[preset]);
-            erc725_address = config.wallets.deploy.address; //await lsp7_asset.methods.owner().call();
+            try {
+                erc725_address = await lsp7_asset.methods.owner().call();
+            } catch(e) {
+                console.log(e);
+            }
+            
         } else {
             if(Object.keys(up).length == 0 ) {
                 return;
@@ -83,7 +88,16 @@ async function loop_deployLSP8(state) {
             currentId = totalSupply;
         } else {
             erc725_address = mchammer.randomKey(up); 
-            lsp8_asset = await mchammer.deployLSP8(lspFactory, web3, erc725_address, EOA, state);
+            lsp8_asset = await mchammer.deployLSP8(lspFactory, web3, erc725_address, EOA, state, 
+                function(lsp8_asset) {
+                    console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
+                
+                    state.lsp8.addresses[lsp8_asset._address] = {
+                        owner: erc725_address,
+                        totalSupply,
+                        currentId
+                    } 
+                });
 
         }
 
@@ -101,8 +115,6 @@ async function loop_deployLSP8(state) {
 
 }
 async function loop_mintLSP7(state) {
-    log(`[+] Minting more LSP7`, VERBOSE);
-    let {lsp7} = state;
     if(Object.keys(state.lsp7.addresses).length > 0) {
         await mchammer.doMint('lsp7', LSP7Mintable.abi, state);
     } else {
@@ -111,7 +123,7 @@ async function loop_mintLSP7(state) {
     
 }
 async function loop_mintLSP8(state) {
-    log(`[+] Minting more LSP8`, VERBOSE);
+    
     if(Object.keys(state.lsp8.addresses).length > 0) {
         await mchammer.doMint('lsp8', LSP8Mintable.abi, state);
     } else {
@@ -128,7 +140,7 @@ async function loop_transferAllLSP7(state) {
 }
 
 async function do_transferLSP7(state, tx_amt_type) {
-    log(`[+] Transfering LSP7`, VERBOSE);
+    
     let {web3, EOA, up, lsp7} = state;
     try {
         if(lsp7.transferable) {
@@ -173,9 +185,9 @@ async function do_transferLSP7(state, tx_amt_type) {
             km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
             
         
-            mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state)
+            mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state, 'lsp7')
         } else {
-            warn('[!] No LSP7 to Transfer', VERBOSE);
+            warn('No LSP7 to Transfer', DEBUG);
         }
     } catch(e) {
         warn("ERROR when transfering LSP7", INFO);
@@ -186,7 +198,7 @@ async function do_transferLSP7(state, tx_amt_type) {
 
 
 async function loop_transferLSP8(state) {
-    log(`[+] Transfering LSP8`, VERBOSE);
+    log(`[+] Transfering LSP8`, DEBUG);
     let {web3, EOA, up, lsp8} = state;
     try {
         if(lsp8.transferable) {
@@ -225,10 +237,10 @@ async function loop_transferLSP8(state) {
             km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
             log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`, DEBUG);
             
-            await mchammer.transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state);
+            await mchammer.transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state, 'lsp8');
         
         } else {
-            warn('[!] No LSP8 to transfer', VERBOSE);
+            warn('[!] No LSP8 to transfer', DEBUG);
         }
     } catch(e) {
         warn("ERROR when transferring LSP8", INFO);

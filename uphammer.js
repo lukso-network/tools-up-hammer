@@ -42,7 +42,8 @@ class UPHammer {
         this.mergeConfig(user_config);
 
         this.provider = this.config.provider; 
-        log(`[+] Provider is ${this.provider}`, INFO);
+        log(`Provider is ${this.provider}`, INFO);
+        log(`ChainId is ${this.config.chainId}`, INFO);
         // web3 is used for transferring and minting, not deployments
         this.web3 = new Web3(this.provider, this.config.wallets.transfer.privateKey);
         const EOA_transfer = this.web3.eth.accounts.wallet.add(this.config.wallets.transfer.privateKey);
@@ -59,7 +60,7 @@ class UPHammer {
         });
         
         
-        this.config.presets = user_presets;
+        this.config.presets = user_presets ? user_presets : {};
         
         
         this.state = {
@@ -74,6 +75,7 @@ class UPHammer {
             },
             nonce: null,
             droppedNonces: [],
+            incrementGasPrice: [],
             pendingTxs: [],
             web3: this.web3,
             lspFactory: this.lspFactory,
@@ -81,7 +83,9 @@ class UPHammer {
             EOA: {
                 deploy: EOA_deploy,
                 transfer: EOA_transfer
-            }
+            },
+            config: this.config,
+            deploying: false
         }
 
         
@@ -112,15 +116,28 @@ class UPHammer {
     }
 
     deployActors = async function () {
+        while(Object.keys(this.state.up).length === 0) {
+            await delay(1000);
+        }
         for(const action of this.config.dev_loop) {
+            if(this.config.deployReactive) {
+                while(this.state.deploying) {
+                    await delay(this.config.deploymentDelay);
+                }
+            }
+
+            this.state.deploying = true;
             await actions[action](this.state);
+            
         }
         while(this.continueDeployments()) {
             let next = mchammer.randomIndex(this.deploy_actions); 
             try {
                 await this.deploy_actions[next](this.state);
+                await delay(this.config.deploymentDelay);
             } catch (e) {
-                warn(`Error during ${this.deploy_actions[next]}`, INFO);
+                warn(`Error during ${this.deploy_actions[next].name}`, INFO);
+                console.log(e);
             }
         }
     }
@@ -135,7 +152,7 @@ class UPHammer {
                 }
                 
             } catch(e) {
-                warn(`error during ${this.transfer_actions[next]}`, INFO);
+                warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
             
             await delay(crypto.randomInt(this.config.maxDelay))
@@ -205,7 +222,7 @@ class UPHammer {
             process.exit();
         }
         
-        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
+        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
         log(`[+] Transfer Wallet Nonce is ${this.state.nonce}`, INFO);
         await this.init(this.config.initialUPs);
         // console.log(state);
