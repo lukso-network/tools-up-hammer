@@ -323,20 +323,34 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
 }
 
 async function transfer(lsp, _from, _to, amount, up, state, type ) {
+    let next, nonce, gasPrice;
     try {
         // function transfer(address from, address to, uint256 amount, bool force, bytes memory data) external;
         let targetPayload = lsp.methods.transfer(_from, _to, amount, false, '0x').encodeABI();
         
-        let nonce = nextNonce(state);
-        log(`[+] Transfering ${type.toUpperCase()} (${nonce})`, VERBOSE);
+        
         let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
+        // default gasPrice
+        let defaultGasPrice = state.config.defaultGasPrice;
+
+        next = nextNonce(state);
+        if(!next) {
+            console.log('nothing next?');
+        }
+        nonce = next.nonce;
+        gasPrice = next.gasPrice? next.gasPrice: defaultGasPrice;
+        
+        log(`[+] Transfering ${type.toUpperCase()} (${nonce})`, VERBOSE);
         log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`, DEBUG);
-    
+        
+        if(next.gasPrice) {
+            log(`Replaying ${nonce} with gasPrice ${gasPrice}`, INFO);
+        }
         up.km.methods.execute(abiPayload).send({
             from: up.EOA.transfer.address, 
             gas: 5_000_000,
-            gasPrice: '1000000000',
+            gasPrice,
             nonce
         })
         .on('transactionHash', function(hash){
@@ -350,6 +364,9 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
             log(error, VERBOSE);
+            if(error.toString().includes("replacement transaction underpriced")) {
+                replayAndIncrementGasPrice(state, nonce, gasPrice);
+            }
             let hash = extractHashFromStacktrace(error);
             if (hash) {
                 fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
@@ -365,7 +382,11 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
             }
         });
     } catch(e) {
+        warn(`[!] Error during transfer. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         console.log(e, INFO);
+        if(e.toString().includes("replacement transaction underpriced")) {
+            replayAndIncrementGasPrice(state, nonce, gasPrice);
+        }
     }
     
 }

@@ -77,7 +77,6 @@ class UPHammer {
             droppedNonces: [],
             incrementGasPrice: [],
             pendingTxs: [],
-            stubbornNonces: [],
             web3: this.web3,
             lspFactory: this.lspFactory,
             DEPLOY_PROXY,
