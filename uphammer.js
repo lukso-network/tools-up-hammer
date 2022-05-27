@@ -85,7 +85,8 @@ class UPHammer {
                 transfer: EOA_transfer
             },
             config: this.config,
-            deploying: false
+            deploying: false,
+            backoff: 0
         }
 
         
@@ -154,8 +155,10 @@ class UPHammer {
             } catch(e) {
                 warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
-            
-            await delay(crypto.randomInt(this.config.maxDelay))
+            let timeToDelay = crypto.randomInt(this.config.maxDelay) + this.state.backoff;
+            this.state.backoff > 0 ? this.state.backoff-- : this.state.backoff = 0;
+
+            await delay(timeToDelay);
         }
     }
 
@@ -166,17 +169,22 @@ class UPHammer {
             // from the array asynchronously
             // so using await unless a better solution came be found.
             // this runs in its own thread though, so won't affect the transfers
-            let tx = await this.web3.eth.getTransaction(this.state.pendingTxs[i].hash);
-            if(!tx) {
-                // tx is dropped
-                
-                this.state.droppedNonces.push(this.state.pendingTxs[i].nonce);
-                this.state.droppedNonces.sort();
-                txsToRemove.push(i);
-            } else if(tx.blockNumber) {
-                // tx is mined
-                txsToRemove.push(i);
+            try {
+                let tx = await this.web3.eth.getTransaction(this.state.pendingTxs[i].hash);
+                if(!tx) {
+                    // tx is dropped
+                    
+                    this.state.droppedNonces.push(this.state.pendingTxs[i].nonce);
+                    this.state.droppedNonces.sort();
+                    txsToRemove.push(i);
+                } else if(tx.blockNumber) {
+                    // tx is mined
+                    txsToRemove.push(i);
+                }
+            } catch(e) {
+                console.log(e);
             }
+
         }
         // remove the indices after the entire pendingTxs array has been gone through
         for(let j=0; j<txsToRemove.length;j++) {

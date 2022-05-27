@@ -14,7 +14,7 @@ const INFO = require("./logging").INFO;
 const QUIET = require("./logging").QUIET
 
 async function loop_deployUP(state) {
-    if(Object.keys(state.up).length <= state.config.deployLimits.up) {
+    if(Object.keys(state.up).length < state.config.deployLimits.up) {
         console.log(`[+] Deploying new UP`);
         let {lspFactory, web3, EOA, up, config} = state;
         let deployed = await mchammer.deploy(lspFactory, config);
@@ -36,7 +36,7 @@ async function loop_deployUP(state) {
     }
 }
 async function loop_deployLSP7(state) {
-    if(Object.keys(state.lsp7.addresses).length <= config.deployLimits.lsp7) {
+    if(Object.keys(state.lsp7.addresses).length < config.deployLimits.lsp7) {
         console.log(`[+] Deploying new LSP7`);
         let {lspFactory, web3, EOA, up, lsp7} = state;
         let lsp7_asset, erc725_address;
@@ -72,7 +72,7 @@ async function loop_deployLSP7(state) {
 
 }
 async function loop_deployLSP8(state) {
-    if(Object.keys(state.lsp8.addresses).length <= config.deployLimits.lsp8) {
+    if(Object.keys(state.lsp8.addresses).length < config.deployLimits.lsp8) {
         console.log(`[+] Deploying new LSP8`);
         let {lspFactory, web3, EOA, up, lsp8} = state;
         let lsp8_asset, erc725_address

@@ -21,7 +21,7 @@ const extractHashFromStacktrace = require("./utils").extractHashFromStacktrace;
 const randomIndex = require("./utils").randomIndex;
 const randomKey = require("./utils").randomKey;
 const logTx = require("./utils").logTx;
-
+const backoff = require("./utils").backoff;
 
 const OPERATION_CALL = 0;
 
@@ -46,17 +46,17 @@ async function initUP(state) {
     if(config.presets[config.wallets.deploy.address]
         && config.presets[config.wallets.deploy.address].up.length > 0 
         && !state.up[config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS]) {
-        log(`[+] Found UP addresses. Skipping deployments`, VERBOSE);
+        log(`[+] Found UP addresses. Skipping deployments`, INFO);
         erc725_address = config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[0].KEYMANAGER_ADDRESS;
     } else if(config.presets[config.wallets.deploy.address] 
         && config.presets[config.wallets.deploy.address].up.length > 1 
         && !state.up[config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS]) {
-        log(`[+] Found Secondary UP. Skipping deployments`, VERBOSE);
+        log(`[+] Found Secondary UP. Skipping deployments`, INFO);
         erc725_address = config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[1].KEYMANAGER_ADDRESS;
     } else {
-        log(`[+] Deploying Profile`, VERBOSE);
+        log(`[+] Deploying Profile`, INFO);
         deployed = await deploy(lspFactory, config);
         if(deployed) {
             erc725_address = deployed.ERC725Account.address;
@@ -103,6 +103,8 @@ async function deploy(lspFactory, config) {
                     deployProxy: config.deployProxy, 
                 },
                 // deployReactive: true
+            }).catch((e) =>{
+                console.log(e);
             })
             // .subscribe({
             //     next: (deploymentEvent) => {
@@ -133,6 +135,8 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
         {
             deployReactive: state.config.deployReactive,
             deployProxy: state.config.deployProxy
+        }).catch((e) => {
+            console.log(e);
         })
 
         if(state.config.deployReactive) {
@@ -186,6 +190,8 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
         },
         {
             deployProxy: state.config.deployProxy
+        }).catch((e) => {
+            console.log(e);
         })
         
         const lsp7 = new web3.eth.Contract(
@@ -263,7 +269,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         gasPrice = next.gasPrice? next.gasPrice: defaultGasPrice;
 
         log(`[+] Minting more ${type} (${nonce})`, VERBOSE);
-        let gasPriceWei = await state.web3.eth.getGasPrice();
+        // let gasPriceWei = await state.web3.eth.getGasPrice();
         // let gasWei = await up.km.methods.execute(abiPayload).estimateGas()
         
         if(next.gasPrice) {
@@ -281,13 +287,13 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             state.pendingTxs.push({hash, nonce});
         })
         .on('receipt', function(receipt){
-            try {
-                lsp.methods.totalSupply().call().then((totalSupply) => {
-                    log(`Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce} Tx ${receipt.transactionHash}`, INFO);
-                })
-            } catch(e) {
-                log(`Minted tokens to ${lsp._address} Nonce ${nonce} Tx ${receipt.transactionHash}`, INFO);
-            }
+            // try {
+            //     lsp.methods.totalSupply().call().then((totalSupply) => {
+            //         log(`Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce} Tx ${receipt.transactionHash}`, INFO);
+            //     })
+            // } catch(e) {
+                log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
+            // }
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
             
             
@@ -297,6 +303,12 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             warn(error, VERBOSE);
             if(error.toString().includes("replacement transaction underpriced")) {
                 replayAndIncrementGasPrice(state, nonce, gasPrice);
+            } else if(error.toString().includes("Failed to check for transaction receipt")) {
+                console.log(error);
+                backoff(state);
+            } else if(error.toString().includes("Invalid JSON RPC response")) {
+                console.log(error);
+                backoff(state);
             }
             let hash = extractHashFromStacktrace(error);
             if (hash) {
@@ -314,9 +326,15 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         
     } catch(e) {
         warn(`[!] Error during minting. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
-        console.log(e);
+        // console.log(e);
         if(e.toString().includes("replacement transaction underpriced")) {
             replayAndIncrementGasPrice(state, nonce, gasPrice);
+        } else if(e.toString().includes("Failed to check for transaction receipt")) {
+            console.log(e);
+            backoff(state);
+        } else if(e.toString().includes("Invalid JSON RPC response")) {
+            console.log(e);
+            backoff(state);
         }
     }
     
@@ -366,6 +384,12 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
             log(error, VERBOSE);
             if(error.toString().includes("replacement transaction underpriced")) {
                 replayAndIncrementGasPrice(state, nonce, gasPrice);
+            } else if(error.toString().includes("Failed to check for transaction receipt")) {
+                console.log(error);
+                backoff(state);
+            } else if(error.toString().includes("Invalid JSON RPC response")) {
+                console.log(error);
+                backoff(state);
             }
             let hash = extractHashFromStacktrace(error);
             if (hash) {
@@ -383,9 +407,15 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         });
     } catch(e) {
         warn(`[!] Error during transfer. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
-        console.log(e, INFO);
+        console.log(e, VERBOSE);
         if(e.toString().includes("replacement transaction underpriced")) {
             replayAndIncrementGasPrice(state, nonce, gasPrice);
+        } else if(e.toString().includes("Failed to check for transaction receipt")) {
+            console.log(e);
+            backoff(state);
+        } else if(e.toString().includes("Invalid JSON RPC response")) {
+            console.log(e);
+            backoff(state);
         }
     }
     

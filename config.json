@@ -34,5 +34,6 @@
     "presets": {},
     "deployReactive": false,
     "defaultGasPrice": "1000000000",
-    "gasIncrement": 1
+    "gasIncrement": 1,
+    "backoff": 100
 }
