@@ -216,9 +216,18 @@ async function doMint(type, abi, state) {
         if(type==='lsp8') {
             // we need to mint an Identifier, not an amount
             // since this will be called multiple times before any tx completes,
-            // need to maintain state of the ids ourselves
-            let nextId = lsp.addresses[asset_address].currentId++;
-            mint_amt_or_id = web3.utils.toHex(nextId+1);
+            // we need to know the current state of the lsp8s supply
+            // however, we cannot keep state ourselves because the calls are not guaranteed to succeed
+            // this will likely cause reverts if we try to mint the same id twice
+            try {
+                let nextId = await lsp_asset.methods.totalSupply().call();
+                nextId = parseInt(nextId) + 1;
+                mint_amt_or_id = web3.utils.toHex(nextId);
+            } catch(e) {
+                errorHandler(state, e);
+                return;
+            }
+            
         }
 
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
