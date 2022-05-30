@@ -160,7 +160,7 @@ function resetMonitor() {
 
 function monitorCycle(state) {
     monitor(`************************************[*]`);
-    monitor(`Tx Sent: ${state.monitor.tx.sent}`);
+    monitor(`Tx Sent: ${state.monitor.tx.sent} Max Delay ${state.config.maxDelay}ms Backoff ${state.backoff}ms` );
     monitor(`Successes ${state.monitor.tx.receipts} Pending ${state.pendingTxs.length}`);
     monitor(`Errors: `);
     monitor(`    Underpriced ${state.monitor.tx.errors.underpriced}`);

@@ -6,12 +6,7 @@ const LSP8Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP8Mintable.
 const mchammer = require('./lib');
 const config = require("./config.json");
 
-const log = require("./logging").log;
-const warn = require("./logging").warn;
-const DEBUG = require("./logging").DEBUG;
-const VERBOSE = require("./logging").VERBOSE;
-const INFO = require("./logging").INFO;
-const QUIET = require("./logging").QUIET
+const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
 
 async function loop_deployUP(state) {
     if(Object.keys(state.up).length < state.config.deployLimits.up) {

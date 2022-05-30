@@ -1,11 +1,6 @@
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
-// const LSP7DigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP7DigitalAsset.json');
-// const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
-// const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
-// const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
-// require('dotenv').config();
+
 const Web3 = require('web3');
-// const ethers = require("ethers");
 
 const crypto = require('crypto');
 const delay = require('await-delay');
@@ -16,6 +11,8 @@ const config = require("./config.json");
 const utils = require("./utils");
 const presets = require("./presets.json");
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
+
+let {state} = require("./state");
 
 const XHR = require('xhr2-cookies').XMLHttpRequest
 XHR.prototype._onHttpRequestError = function (request, error) {
@@ -45,29 +42,7 @@ XHR.prototype._onHttpRequestError = function (request, error) {
   this._dispatchProgress('loadend');
 };
 
-let state = {
-    up: {},
-    lsp7: {
-        transferable: false,
-        addresses: {}
-    },
-    lsp8: {
-        transferable: false,
-        addresses: {}
-    },
-    nonce: null,
-    droppedNonces: [],
-    incrementGasPrice: [],
-    pendingTxs: [],
-    web3: null,
-    lspFactory: null,
-    DEPLOY_PROXY: null,
-    EOA: {},
-    config: null,
-    deploying: false,
-    backoff: 0,
-    monitor: utils.resetMonitor()
-}
+
 
 
 class UPHammer {
@@ -85,6 +60,10 @@ class UPHammer {
         actions.loop_mintLSP7,
         actions.loop_mintLSP8,
     ];
+
+    
+    
+
     constructor(user_config, user_presets) {
         // merge config
         this.config = config;
@@ -112,7 +91,7 @@ class UPHammer {
         this.config.presets = user_presets ? user_presets : {};
         
         
-        this.state = {...state,
+        state = {...state,
             web3: this.web3,
             lspFactory: this.lspFactory,
             DEPLOY_PROXY,
@@ -122,8 +101,6 @@ class UPHammer {
             },
             config: this.config,
         };
-
-
         
     }
 
@@ -135,16 +112,16 @@ class UPHammer {
 
     init = async function(num_to_deploy) {
         for(let i=0; i < num_to_deploy; i++) {
-            await mchammer.initUP(this.state);
+            await mchammer.initUP(state);
         }
      
     }
 
     continueDeployments = function () {
         let _continue = false;
-        if(Object.keys(this.state.up).length <= this.config.deployLimits.up
-            && Object.keys(this.state.lsp7.addresses).length <= this.config.deployLimits.lsp7
-            && Object.keys(this.state.lsp8.addresses).length <= this.config.deployLimits.lsp8)
+        if(Object.keys(state.up).length <= this.config.deployLimits.up
+            && Object.keys(state.lsp7.addresses).length <= this.config.deployLimits.lsp7
+            && Object.keys(state.lsp8.addresses).length <= this.config.deployLimits.lsp8)
         {
             _continue = true;
         }
@@ -152,24 +129,24 @@ class UPHammer {
     }
 
     deployActors = async function () {
-        while(Object.keys(this.state.up).length === 0) {
+        while(Object.keys(state.up).length === 0) {
             await delay(1000);
         }
         for(const action of this.config.dev_loop) {
             if(this.config.deployReactive) {
-                while(this.state.deploying) {
+                while(state.deploying) {
                     await delay(this.config.deploymentDelay);
                 }
             }
 
-            this.state.deploying = true;
-            await actions[action](this.state);
+            state.deploying = true;
+            await actions[action](state);
             
         }
         while(this.continueDeployments()) {
             let next = mchammer.randomIndex(this.deploy_actions); 
             try {
-                await this.deploy_actions[next](this.state);
+                await this.deploy_actions[next](state);
                 await delay(this.config.deploymentDelay);
             } catch (e) {
                 warn(`Error during ${this.deploy_actions[next].name}`, INFO);
@@ -183,15 +160,15 @@ class UPHammer {
 
             let next = mchammer.randomIndex(this.transfer_actions); 
             try {
-                if(Object.keys(this.state.up).length > 0) { 
-                    this.transfer_actions[next](this.state);    
+                if(Object.keys(state.up).length > 0) { 
+                    this.transfer_actions[next](state);    
                 }
                 
             } catch(e) {
                 warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
-            let timeToDelay = crypto.randomInt(this.config.maxDelay) + this.state.backoff;
-            this.state.backoff > 0 ? this.state.backoff-- : this.state.backoff = 0;
+            let timeToDelay = crypto.randomInt(this.config.maxDelay) + state.backoff;
+            state.backoff > 0 ? state.backoff-- : state.backoff = 0;
 
             await delay(timeToDelay);
         }
@@ -199,16 +176,16 @@ class UPHammer {
 
     checkPendingTx = async function () {
         let txsToRemove = [];
-        for(let i=0; i<this.state.pendingTxs.length; i++) {
+        for(let i=0; i<state.pendingTxs.length; i++) {
             // we do this with promises, then the indexes get messed up when transactions are removed
             // from the array asynchronously
             // so using await unless a better solution came be found.
             // this runs in its own thread though, so won't affect the transfers
             try {
-                let tx = await this.web3.eth.getTransaction(this.state.pendingTxs[i].hash);
+                let tx = await this.web3.eth.getTransaction(state.pendingTxs[i].hash);
                 if(!tx) {
                     // tx is dropped
-                    utils.addNonceToDroppedNoncesIfNotPresent(this.state, this.state.pendingTxs[i].nonce);
+                    utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[i].nonce);
                     txsToRemove.push(i);
                 } else if(tx.blockNumber) {
                     // tx is mined
@@ -221,7 +198,7 @@ class UPHammer {
         }
         // remove the indices after the entire pendingTxs array has been gone through
         for(let j=0; j<txsToRemove.length;j++) {
-            this.state.pendingTxs.splice(txsToRemove[j], 1);
+            state.pendingTxs.splice(txsToRemove[j], 1);
         }
     
     }
@@ -259,7 +236,7 @@ class UPHammer {
     monitor = async function() {
         while(true) {
             await delay(this.config.monitorDelay);
-            utils.monitorCycle(this.state);
+            utils.monitorCycle(state);
         }
     }
     
@@ -270,8 +247,8 @@ class UPHammer {
             process.exit();
         }
         
-        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
-        log(`[+] Transfer Wallet Nonce is ${this.state.nonce}`, INFO);
+        state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
+        log(`[+] Transfer Wallet Nonce is ${state.nonce}`, INFO);
         await this.init(this.config.initialUPs);
         // console.log(state);
         
