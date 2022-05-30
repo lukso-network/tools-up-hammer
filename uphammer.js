@@ -22,6 +22,44 @@ const VERBOSE = require("./logging").VERBOSE;
 const INFO = require("./logging").INFO;
 const QUIET = require("./logging").QUIET
 
+const XHR = require('xhr2-cookies').XMLHttpRequest
+XHR.prototype._onHttpRequestError = function (request, error) {
+  if (this._request !== request) {
+      return;
+  }
+  // A new line
+  console.log(error)
+  this._setError();
+  request.abort();
+  this._setReadyState(XHR.DONE);
+  this._dispatchProgress('error');
+  this._dispatchProgress('loadend');
+};
+
+let state = {
+    up: {},
+    lsp7: {
+        transferable: false,
+        addresses: {}
+    },
+    lsp8: {
+        transferable: false,
+        addresses: {}
+    },
+    nonce: null,
+    droppedNonces: [],
+    incrementGasPrice: [],
+    pendingTxs: [],
+    web3: null,
+    lspFactory: null,
+    DEPLOY_PROXY: null,
+    EOA: {},
+    config: null,
+    deploying: false,
+    backoff: 0
+}
+
+
 class UPHammer {
 
     deploy_actions = [
@@ -64,20 +102,7 @@ class UPHammer {
         this.config.presets = user_presets ? user_presets : {};
         
         
-        this.state = {
-            up: {},
-            lsp7: {
-                transferable: false,
-                addresses: {}
-            },
-            lsp8: {
-                transferable: false,
-                addresses: {}
-            },
-            nonce: null,
-            droppedNonces: [],
-            incrementGasPrice: [],
-            pendingTxs: [],
+        this.state = {...state,
             web3: this.web3,
             lspFactory: this.lspFactory,
             DEPLOY_PROXY,
@@ -86,9 +111,8 @@ class UPHammer {
                 transfer: EOA_transfer
             },
             config: this.config,
-            deploying: false,
-            backoff: 0
-        }
+        };
+
 
         
     }

@@ -30,6 +30,12 @@ function nextNonce(state) {
     return {nonce, gasPrice};
 }
 
+function addNonceToDroppedNoncesIfNotPresent(state, nonce) {
+    if(state.droppedNonces.indexOf(nonce) >= 0) {  return; }
+    state.droppedNonces.push(nonce);
+    state.droppedNonces.sort();
+}
+
 function replayAndIncrementGasPrice(state, nonce, gasPrice) {
     // first check if the nonce is already here
     // if it is, update the gasPrice
@@ -90,5 +96,6 @@ module.exports = {
     randomIndex,
     randomKey,
     logTx,
-    backoff
+    backoff,
+    addNonceToDroppedNoncesIfNotPresent
 }
