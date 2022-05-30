@@ -1,4 +1,3 @@
-const fs = require('fs');
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const LSP8IdentifiableDigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP8IdentifiableDigitalAsset.json');
@@ -8,21 +7,9 @@ const schemas = require('./schemas.js').schemas;
 const lsp3Profile = require('./profiles.js').profile;
 const config = require("./config.json");
 
-const log = require("./logging").log;
-const warn = require("./logging").warn;
-const DEBUG = require("./logging").DEBUG;
-const VERBOSE = require("./logging").VERBOSE;
-const INFO = require("./logging").INFO;
-const QUIET = require("./logging").QUIET
+const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
 
-const nextNonce = require("./utils").nextNonce;
-const replayAndIncrementGasPrice = require("./utils").replayAndIncrementGasPrice;
-const extractHashFromStacktrace = require("./utils").extractHashFromStacktrace;
-const randomIndex = require("./utils").randomIndex;
-const randomKey = require("./utils").randomKey;
-const logTx = require("./utils").logTx;
-const backoff = require("./utils").backoff;
-const addNonceToDroppedNoncesIfNotPresent = require("./utils").addNonceToDroppedNoncesIfNotPresent;
+const {nextNonce, errorHandler, randomIndex, randomKey, logTx, addNonceToDroppedNoncesIfNotPresent } = require("./utils");
 
 const OPERATION_CALL = 0;
 
@@ -277,6 +264,8 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             log(`Replaying ${nonce} with gasPrice ${gasPrice}`, INFO);
         }
 
+        state.monitor.tx.sent++;
+
         await up.km.methods.execute(abiPayload).send({
             from: EOA.transfer.address, 
             gas: 5_000_000,
@@ -288,58 +277,22 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             state.pendingTxs.push({hash, nonce});
         })
         .on('receipt', function(receipt){
-            // try {
-            //     lsp.methods.totalSupply().call().then((totalSupply) => {
-            //         log(`Minted ${totalSupply} tokens to ${lsp._address} Nonce ${nonce} Tx ${receipt.transactionHash}`, INFO);
-            //     })
-            // } catch(e) {
-                log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
-            // }
+            log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
+            state.monitor.tx.receipts++;
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
-            
             
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Minting Error. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
-            warn(error, VERBOSE);
-            if(error.toString().includes("replacement transaction underpriced")) {
-                replayAndIncrementGasPrice(state, nonce, gasPrice);
-            } else if(error.toString().includes("Failed to check for transaction receipt")) {
-                console.log(error);
-                backoff(state);
-                addNonceToDroppedNoncesIfNotPresent(state, nonce);
-                
-            } else if(error.toString().includes("Invalid JSON RPC response")) {
-                console.log(error);
-                backoff(state);
-            }
-            let hash = extractHashFromStacktrace(error);
-            if (hash) {
-                fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
-                    if (err) {
-                      console.error(err);
-                    }
-                })
-            }
             
-            if(receipt) {
-                log(receipt, VERBOSE);
-            }
+            warn(error, VERBOSE);
+            errorHandler(state, error, nonce, receipt, gasPrice);
         });
         
     } catch(e) {
         warn(`Error during minting. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         // console.log(e);
-        if(e.toString().includes("replacement transaction underpriced")) {
-            replayAndIncrementGasPrice(state, nonce, gasPrice);
-        } else if(e.toString().includes("Failed to check for transaction receipt")) {
-            console.log(e);
-            backoff(state);
-            addNonceToDroppedNoncesIfNotPresent(state, nonce);
-        } else if(e.toString().includes("Invalid JSON RPC response")) {
-            console.log(e);
-            backoff(state);
-        }
+       errorHandler(state, e, nonce, null, gasPrice);
     }
     
 }
@@ -369,6 +322,9 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         if(next.gasPrice) {
             log(`Replaying ${nonce} with gasPrice ${gasPrice}`, INFO);
         }
+
+        state.monitor.tx.sent++;
+
         up.km.methods.execute(abiPayload).send({
             from: up.EOA.transfer.address, 
             gas: 5_000_000,
@@ -382,47 +338,19 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         .on('receipt', function(receipt){
             log(`Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
+            state.monitor.tx.receipts++;
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`Transfer Error. Nonce ${nonce}`, INFO);
             log(error, VERBOSE);
-            if(error.toString().includes("replacement transaction underpriced")) {
-                replayAndIncrementGasPrice(state, nonce, gasPrice);
-            } else if(error.toString().includes("Failed to check for transaction receipt")) {
-                console.log(error);
-                backoff(state);
-                addNonceToDroppedNoncesIfNotPresent(state, nonce);
-            } else if(error.toString().includes("Invalid JSON RPC response")) {
-                console.log(error);
-                backoff(state);
-            }
-            let hash = extractHashFromStacktrace(error);
-            if (hash) {
-                fs.writeFile(config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
-                    if (err) {
-                      console.error(err);
-                    }
-                })
-            }
-            
-            if(receipt) {
-                log(receipt, VERBOSE);
-                // delete state.pendingTxs[nonce];
-            }
+            errorHandler(state, error, nonce, receipt, gasPrice);
+           
         });
     } catch(e) {
         warn(`Error during transfer. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         console.log(e, VERBOSE);
-        if(e.toString().includes("replacement transaction underpriced")) {
-            replayAndIncrementGasPrice(state, nonce, gasPrice);
-        } else if(e.toString().includes("Failed to check for transaction receipt")) {
-            console.log(e);
-            backoff(state);
-            addNonceToDroppedNoncesIfNotPresent(state, nonce);
-        } else if(e.toString().includes("Invalid JSON RPC response")) {
-            console.log(e);
-            backoff(state);
-        }
+        errorHandler(state, e, nonce, null, gasPrice);
+       
     }
     
 }

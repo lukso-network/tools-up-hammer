@@ -19,6 +19,7 @@
     "maxDelay": 100,
     "deploymentDelay": 10000,
     "nonceCheckDelay": 5000,
+    "monitorDelay": 5000,
     "pendingNonceThreshold": 5, 
     "dev_loop" : [
         "loop_deployLSP7",
@@ -26,7 +27,7 @@
         "loop_mintLSP8",
         "loop_mintLSP7"
     ],
-    "logLevel": 2,
+    "logLevel": 3,
     "txErrorLog": "./txErrors",
     "txTransactionLog": "./txLog",
     "deployProxy": true,

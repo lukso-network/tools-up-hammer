@@ -15,12 +15,7 @@ const actions = require('./actions');
 const config = require("./config.json");
 const utils = require("./utils");
 const presets = require("./presets.json");
-const log = require("./logging").log;
-const warn = require("./logging").warn;
-const DEBUG = require("./logging").DEBUG;
-const VERBOSE = require("./logging").VERBOSE;
-const INFO = require("./logging").INFO;
-const QUIET = require("./logging").QUIET
+const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
 
 const XHR = require('xhr2-cookies').XMLHttpRequest
 XHR.prototype._onHttpRequestError = function (request, error) {
@@ -28,7 +23,21 @@ XHR.prototype._onHttpRequestError = function (request, error) {
       return;
   }
   // A new line
-  console.log(error)
+  
+  let msg = error.toString();
+  if(msg.includes("ECONNRESET")) {
+    state.monitor.networkFailures.econnreset++
+  } else if(msg.includes("ECONNREFUSED")) {
+    state.monitor.networkFailures.econnrefused++
+  } else if(msg.includes("Client network socket disconnected before secure TLS connection was established")) {
+      state.monitor.networkFailures.socketDisconnectedTLS++;
+  } else if(msg.includes("socket hang up")) {
+      state.monitor.networkFailures.socketHangUp++;
+  } else if(msg.includes("ETIME")) {
+      state.monitor.networkFailures.timedout++;
+  } else {
+    console.log(error);
+  }
   this._setError();
   request.abort();
   this._setReadyState(XHR.DONE);
@@ -56,7 +65,8 @@ let state = {
     EOA: {},
     config: null,
     deploying: false,
-    backoff: 0
+    backoff: 0,
+    monitor: utils.resetMonitor()
 }
 
 
@@ -245,6 +255,13 @@ class UPHammer {
         }
         return true;
     }
+
+    monitor = async function() {
+        while(true) {
+            await delay(this.config.monitorDelay);
+            utils.monitorCycle(this.state);
+        }
+    }
     
     start = async function () {
         let deploy_balance = await this.checkBalance("deploy");
@@ -258,6 +275,7 @@ class UPHammer {
         await this.init(this.config.initialUPs);
         // console.log(state);
         
+        this.monitor();
         this.nonceCheck();
         this.runTransfers();
         this.deployActors();
