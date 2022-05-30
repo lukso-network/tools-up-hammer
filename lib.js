@@ -22,6 +22,7 @@ const randomIndex = require("./utils").randomIndex;
 const randomKey = require("./utils").randomKey;
 const logTx = require("./utils").logTx;
 const backoff = require("./utils").backoff;
+const addNonceToDroppedNoncesIfNotPresent = require("./utils").addNonceToDroppedNoncesIfNotPresent;
 
 const OPERATION_CALL = 0;
 
@@ -306,6 +307,8 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             } else if(error.toString().includes("Failed to check for transaction receipt")) {
                 console.log(error);
                 backoff(state);
+                addNonceToDroppedNoncesIfNotPresent(state, nonce);
+                
             } else if(error.toString().includes("Invalid JSON RPC response")) {
                 console.log(error);
                 backoff(state);
@@ -325,13 +328,14 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         });
         
     } catch(e) {
-        warn(`[!] Error during minting. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
+        warn(`Error during minting. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         // console.log(e);
         if(e.toString().includes("replacement transaction underpriced")) {
             replayAndIncrementGasPrice(state, nonce, gasPrice);
         } else if(e.toString().includes("Failed to check for transaction receipt")) {
             console.log(e);
             backoff(state);
+            addNonceToDroppedNoncesIfNotPresent(state, nonce);
         } else if(e.toString().includes("Invalid JSON RPC response")) {
             console.log(e);
             backoff(state);
@@ -359,8 +363,8 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         nonce = next.nonce;
         gasPrice = next.gasPrice? next.gasPrice: defaultGasPrice;
         
-        log(`[+] Transfering ${type.toUpperCase()} (${nonce})`, VERBOSE);
-        log(`[+] Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`, DEBUG);
+        log(`Transfering ${type.toUpperCase()} (${nonce})`, VERBOSE);
+        log(`Transferring (${nonce}) ${amount} of ${lsp._address} from ${_from} to ${_to}`, DEBUG);
         
         if(next.gasPrice) {
             log(`Replaying ${nonce} with gasPrice ${gasPrice}`, INFO);
@@ -372,21 +376,22 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
             nonce
         })
         .on('transactionHash', function(hash){
-            log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
+            log(`Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
             state.pendingTxs.push({nonce, hash});
         })
         .on('receipt', function(receipt){
-            log(`[+] Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
+            log(`Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
-            warn(`[!] Transfer Error. Nonce ${nonce}`, INFO);
+            warn(`Transfer Error. Nonce ${nonce}`, INFO);
             log(error, VERBOSE);
             if(error.toString().includes("replacement transaction underpriced")) {
                 replayAndIncrementGasPrice(state, nonce, gasPrice);
             } else if(error.toString().includes("Failed to check for transaction receipt")) {
                 console.log(error);
                 backoff(state);
+                addNonceToDroppedNoncesIfNotPresent(state, nonce);
             } else if(error.toString().includes("Invalid JSON RPC response")) {
                 console.log(error);
                 backoff(state);
@@ -406,13 +411,14 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
             }
         });
     } catch(e) {
-        warn(`[!] Error during transfer. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
+        warn(`Error during transfer. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         console.log(e, VERBOSE);
         if(e.toString().includes("replacement transaction underpriced")) {
             replayAndIncrementGasPrice(state, nonce, gasPrice);
         } else if(e.toString().includes("Failed to check for transaction receipt")) {
             console.log(e);
             backoff(state);
+            addNonceToDroppedNoncesIfNotPresent(state, nonce);
         } else if(e.toString().includes("Invalid JSON RPC response")) {
             console.log(e);
             backoff(state);
@@ -432,4 +438,5 @@ module.exports = {
     randomKey,
     doMint,
     initUP,
+    addNonceToDroppedNoncesIfNotPresent
 }

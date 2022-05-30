@@ -13,6 +13,7 @@ const delay = require('await-delay');
 const mchammer = require('./lib');
 const actions = require('./actions');
 const config = require("./config.json");
+const utils = require("./utils");
 const presets = require("./presets.json");
 const log = require("./logging").log;
 const warn = require("./logging").warn;
@@ -173,9 +174,7 @@ class UPHammer {
                 let tx = await this.web3.eth.getTransaction(this.state.pendingTxs[i].hash);
                 if(!tx) {
                     // tx is dropped
-                    
-                    this.state.droppedNonces.push(this.state.pendingTxs[i].nonce);
-                    this.state.droppedNonces.sort();
+                    utils.addNonceToDroppedNoncesIfNotPresent(this.state, this.state.pendingTxs[i].nonce);
                     txsToRemove.push(i);
                 } else if(tx.blockNumber) {
                     // tx is mined
