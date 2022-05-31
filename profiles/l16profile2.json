@@ -22,7 +22,12 @@
     "dev_loop" : [
         "loop_deployUP",
         "loop_deployUP",
-        "loop_deployUP"
+        "loop_deployUP",
+        "loop_deployLSP8",
+        "loop_transferLSP8",
+        "loop_transferLSP8",
+        "loop_transferLSP8",
+        "loop_transferLSP8"
     ],
     "deployLimits": {
         "up": 50,
