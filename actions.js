@@ -7,6 +7,7 @@ const mchammer = require('./lib');
 const config = require("./config.json");
 
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
+const {savePresets} = require("./utils");
 
 async function loop_deployUP(state) {
     if(Object.keys(state.up).length < state.config.deployLimits.up) {
@@ -25,6 +26,9 @@ async function loop_deployUP(state) {
             state.up[erc725_address] = {
                 erc725,
                 km
+            }
+            if(state.config.savePresets) {
+                savePresets(state, state.config.presetsFile);
             }
         }
         
@@ -59,6 +63,9 @@ async function loop_deployLSP7(state) {
             state.lsp7.addresses[lsp7_asset._address] = {
                 owner: erc725_address,
                 totalSupply: 0,
+            }
+            if(state.config.savePresets) {
+                savePresets(state, state.config.presetsFile);
             }
         }
         
@@ -104,6 +111,9 @@ async function loop_deployLSP8(state) {
                 totalSupply,
                 currentId
             } 
+            if(state.config.savePresets) {
+                savePresets(state, state.config.presetsFile);
+            }
         }
         
     }

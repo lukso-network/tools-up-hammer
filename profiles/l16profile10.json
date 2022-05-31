@@ -1,0 +1,35 @@
+{
+    "provider": "https://rpc.11111111.l16.lukso.network/",
+    "chainId": 111111,
+    "wallets": {
+        "transfer": {
+            "address": "0x6B9437DE67937Bf8A12b329E7d3f22b2173Fb584",
+            "privateKey": "0xcd84339647875a319399f950897a58331e6907e2dda9bcbcb5a6ca3542780751"
+        },
+        "deploy": {
+            "address": "0x332F3463b34570087a11546D34Fd11a4881da772",
+            "privateKey": "0x9713c571a8f0498576fc167fc56063d8f86b24ac1699289ada22ae5b9b101524"
+        }
+    },
+    "maxDelay": 1,
+    "nonceCheckDelay": 5000,
+    "logLevel": 2,
+    "deployProxy": false,
+    "deployReactive": false,
+    "savePresets": true,
+    "deployOnly": true,
+    "presetsFile": "./presets/presets10.json",
+    "dev_loop" : [
+        "loop_deployLSP8",
+        "loop_mintLSP8",
+        "loop_mintLSP8",
+        "loop_mintLSP8",
+        "loop_mintLSP8"
+    ],
+    "deployLimits": {
+        "up": 50,
+        "lsp7": 25,
+        "lsp8": 25
+    },
+    "backoff": 50
+}

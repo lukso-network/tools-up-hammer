@@ -9,7 +9,7 @@ const config = require("./config.json");
 
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
 
-const {nextNonce, errorHandler, randomIndex, randomKey, logTx, addNonceToDroppedNoncesIfNotPresent } = require("./utils");
+const {nextNonce, errorHandler, randomIndex, randomKey, logTx, addNonceToDroppedNoncesIfNotPresent, savePresets } = require("./utils");
 
 const OPERATION_CALL = 0;
 
@@ -62,6 +62,9 @@ async function initUP(state) {
     state.up[erc725_address] = {
         erc725,
         km
+    }
+    if(state.config.savePresets) {
+        savePresets(state, state.config.presetsFile);
     }
 }
 

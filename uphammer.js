@@ -87,9 +87,7 @@ class UPHammer {
           chainId: this.config.chainId, // Chain Id of the network you want to connect to
         });
         
-        
         this.config.presets = user_presets ? user_presets : {};
-        
         
         state = {...state,
             web3: this.web3,
@@ -101,7 +99,6 @@ class UPHammer {
             },
             config: this.config,
         };
-        
     }
 
     mergeConfig = function(user_config) {
@@ -167,6 +164,7 @@ class UPHammer {
             } catch(e) {
                 warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
+            
             let timeToDelay = crypto.randomInt(this.config.maxDelay) + state.backoff;
             state.backoff > 0 ? state.backoff-- : state.backoff = 0;
 
@@ -252,9 +250,11 @@ class UPHammer {
         await this.init(this.config.initialUPs);
         // console.log(state);
         
-        this.monitor();
-        this.nonceCheck();
-        this.runTransfers();
+        if(!state.config.deployOnly) {
+            this.monitor();
+            this.nonceCheck();
+            this.runTransfers();    
+        }
         this.deployActors();
     }
 }

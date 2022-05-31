@@ -33,6 +33,8 @@
     "deployProxy": true,
     "initialUPs": 2,
     "presets": {},
+    "savePresets": true,
+    "deployOnly": false,
     "deployReactive": false,
     "defaultGasPrice": "1000000000",
     "gasIncrement": 1,

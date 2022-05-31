@@ -184,6 +184,72 @@ function monitorCycle(state) {
     state.monitor = resetMonitor();
 }
 
+function alreadySavedUP(presets, up) {
+    let saved = false;
+    for(preset in presets) {
+        if (presets[preset].ERC725_ADDRESS === up.ERC725_ADDRESS || presets[preset].KEYMANAGER_ADDRESS === up.KEYMANAGER_ADDRESS) {
+            saved = true;
+            return saved;
+        }
+    }
+    return saved;
+}
+
+function alreadySavedLSP(presets, lsp) {
+    let saved = false;
+    for(p in presets) {
+        if (presets[p] === lsp) {
+            saved = true;
+            return saved;
+        }
+    }
+    return saved;
+}
+
+function savePresets(state, presetsFile) {
+    let presets = state.config.presets;
+    let deployKey = state.config.wallets.deploy.address;
+    if(!presets[deployKey]) {
+        presets[deployKey] = {
+            "up": [],
+            "lsp7": [],
+            "lsp8": []
+        }
+    }
+    for(key in state.up) {
+        let erc725address = key;
+        let kmAddress = state.up[key].km._address;
+        let up = {
+            "ERC725_ADDRESS": erc725address,
+            "KEYMANAGER_ADDRESS": kmAddress
+        };
+        if(!alreadySavedUP(presets[deployKey].up, up)) {
+            presets[deployKey].up.push(up)
+        }
+    }
+
+    for(lsp7 in state.lsp7.addresses) {
+        if(!alreadySavedLSP(presets[deployKey].lsp7, lsp7)) {
+            presets[deployKey].lsp7.push(lsp7);
+        }
+    }
+
+    for(lsp8 in state.lsp8.addresses) {
+        if(!alreadySavedLSP(presets[deployKey].lsp8, lsp8)) {
+            presets[deployKey].lsp8.push(lsp8);
+        }
+    }
+
+    let serialized = JSON.stringify(presets);
+    fs.writeFile(presetsFile, serialized, err => {
+        if (err) {
+          console.error(err);
+        }
+    })
+
+}
+
+
 module.exports = {
     nextNonce,
     replayAndIncrementGasPrice,
@@ -195,5 +261,6 @@ module.exports = {
     addNonceToDroppedNoncesIfNotPresent,
     monitorCycle,
     resetMonitor,
-    errorHandler
+    errorHandler,
+    savePresets
 }
