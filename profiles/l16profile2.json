@@ -11,7 +11,7 @@
             "privateKey": "0xf59dcbf504339bf145eb0cf7ea7ac0cf7695bc6891365d23f58661be4f11ff1a"
         }
     },
-    "maxDelay": 500,
+    "maxDelay": 0.5,
     "nonceCheckDelay": 5000,
     "logLevel": 2,
     "deployProxy": false,
