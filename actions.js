@@ -207,7 +207,6 @@ async function do_transferLSP7(state, tx_amt_type) {
 
             erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
             km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
-            
         
             mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state, 'lsp7')
         } else {
@@ -228,21 +227,33 @@ async function loop_transferLSP8(state) {
         if(lsp8.transferable) {
             let totalSupply = "0";
             let lsp8_contract, lsp8_address;
+            let tokenId, tokenIdBytes;
+            let owner;
+            let keepSearching = true;
             // as long as one lsp8 assets has a totalSupply >= transfer amount, this won't get stuck
             // need to ensure that condition is always met
-            while(totalSupply === "0") {
+            // additionally, if using presets, the LSP8 owner could be a UP that has not been loaded in yet
+            while(keepSearching) {
                 lsp8_address = mchammer.randomKey(lsp8.addresses);
                 lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);
                 totalSupply = await lsp8_contract.methods.totalSupply().call();
+
+                // select a random token from the supply
+                tokenId = parseInt(crypto.randomInt(parseInt(totalSupply))) + 1; // prevent id from being 0
+                tokenIdBytes = web3.utils.toHex(tokenId);
+
+                // find out who owns it
+                owner = await lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call();
+                // console.log(owner)
+                // super hacky way since the while loop was exiting even though both conditions weren't met
+                if(totalSupply !== "0" && up[owner] !== undefined) {
+                    keepSearching = false;
+                }
+                
             }
             
             
-            // select a random token from the supply
-            let tokenId = parseInt(crypto.randomInt(parseInt(totalSupply))) + 1; // prevent id from being 0
-            let tokenIdBytes = web3.utils.toHex(tokenId);
-
-            // find out who owns it
-            let owner = await lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call();
+            
             log(`[+] Sender ${owner} owns ${tokenIdBytes} token`, DEBUG);
 
             // select a random recipient
@@ -257,6 +268,9 @@ async function loop_transferLSP8(state) {
             log(`[+] Receiver will be ${recv_address}`, DEBUG);
 
             // send
+            if(up[owner] === undefined) {
+                console.log('huh?')
+            }
             erc725 = new web3.eth.Contract(UniversalProfile.abi, owner);
             km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
             log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`, DEBUG);
