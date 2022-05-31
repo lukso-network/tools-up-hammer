@@ -164,8 +164,13 @@ class UPHammer {
             } catch(e) {
                 warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
+            let timeToDelay;
+            if(this.config.maxDelay >= 1) {
+                timeToDelay = crypto.randomInt(this.config.maxDelay) + state.backoff;
+            } else {
+                timeToDelay = this.config.maxDelay + state.backoff;
+            }
             
-            let timeToDelay = crypto.randomInt(this.config.maxDelay) + state.backoff;
             state.backoff > 0 ? state.backoff-- : state.backoff = 0;
 
             await delay(timeToDelay);
