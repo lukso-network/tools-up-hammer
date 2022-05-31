@@ -167,8 +167,10 @@ class UPHammer {
             let timeToDelay;
             if(this.config.maxDelay >= 1) {
                 timeToDelay = crypto.randomInt(this.config.maxDelay) + state.backoff;
-            } else {
+            } else if(this.config.maxDelay > 0) {
                 timeToDelay = this.config.maxDelay + state.backoff;
+            } else {
+                timeToDelay = 0 + state.backoff;
             }
             
             state.backoff > 0 ? state.backoff-- : state.backoff = 0;
