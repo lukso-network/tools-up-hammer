@@ -11,30 +11,48 @@ const {savePresets} = require("./utils");
 
 async function loop_deployUP(state) {
     if(Object.keys(state.up).length < state.config.deployLimits.up) {
-        console.log(`[+] Deploying new UP`);
+        log(`[+] Deploying new UP`, INFO);
         let {lspFactory, web3, EOA, up, config} = state;
-        let deployed = await mchammer.deploy(lspFactory, config);
-        
-        if(deployed) {
-            let erc725_address = deployed.ERC725Account.address;
-            let km_address = deployed.KeyManager.address;
-            
-            console.log(`[+] ERC725 address:     ${erc725_address}`);
-            console.log(`[+] KeyManager address: ${km_address}`);
-            let erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
-            let km = new web3.eth.Contract(KeyManager.abi, km_address);
-            state.up[erc725_address] = {
-                erc725,
-                km
-            }
-            if(state.config.savePresets) {
-                savePresets(state, state.config.presetsFile);
+        let erc725, km;
+        let erc725_address, km_address;
+        if(state.config.presets[EOA.deploy.address]
+            && Object.keys(up).length < Object.keys(state.config.presets[EOA.deploy.address].up).length) 
+        {
+            let preset = Object.keys(up).length;
+            erc725_address = config.presets[config.wallets.deploy.address].up[preset].ERC725_ADDRESS;
+            km_address = config.presets[config.wallets.deploy.address].up[preset].KEYMANAGER_ADDRESS
+            erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+            km = new web3.eth.Contract(KeyManager.abi, km_address);
+        } else {
+            let deployed = await mchammer.deploy(lspFactory, config);
+            if(deployed) {
+                erc725_address = deployed.ERC725Account.address;
+                km_address = deployed.KeyManager.address;
+            } else {
+                return;
             }
         }
+        
+        
+        
+            
+        log(`[+] ERC725 address:     ${erc725_address}`, INFO);
+        log(`[+] KeyManager address: ${km_address}`, INFO);
+        erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+        km = new web3.eth.Contract(KeyManager.abi, km_address);
+        state.up[erc725_address] = {
+            erc725,
+            km
+        }
+        if(state.config.savePresets) {
+            savePresets(state, state.config.presetsFile);
+        }
+        
         
     }
 }
 async function loop_deployLSP7(state) {
+    let config = state.config;
     if(Object.keys(state.lsp7.addresses).length < config.deployLimits.lsp7) {
         console.log(`[+] Deploying new LSP7`);
         let {lspFactory, web3, EOA, up, lsp7} = state;
@@ -74,6 +92,7 @@ async function loop_deployLSP7(state) {
 
 }
 async function loop_deployLSP8(state) {
+    let config = state.config;
     if(Object.keys(state.lsp8.addresses).length < config.deployLimits.lsp8) {
         console.log(`[+] Deploying new LSP8`);
         let {lspFactory, web3, EOA, up, lsp8} = state;
