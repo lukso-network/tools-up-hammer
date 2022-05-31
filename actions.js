@@ -239,6 +239,9 @@ async function loop_transferLSP8(state) {
                 totalSupply = await lsp8_contract.methods.totalSupply().call();
 
                 // select a random token from the supply
+                if(totalSupply === "0") {
+                    continue;
+                }
                 tokenId = parseInt(crypto.randomInt(parseInt(totalSupply))) + 1; // prevent id from being 0
                 tokenIdBytes = web3.utils.toHex(tokenId);
 
