@@ -5,6 +5,6 @@ WORKDIR /app
 COPY . .
 RUN npm install
 # remove this line and set with kubernetes
-ENV UPHAMMER_PROFILE=1
+# ENV UPHAMMER_PROFILE=1
 CMD ["ls"]
 CMD ["/bin/bash", "uphammerProfileEnv.sh"]
