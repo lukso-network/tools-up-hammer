@@ -40,15 +40,15 @@ move between monitor cycles, it is likely the script is stuck because of some re
 
 **Errors** Application level errors. 
 
-    **Underpriced** A `replacement transaction underpriced` error was recieved. The nonce will then be added to the `incrementGasPrice` queue 
+  **Underpriced** A `replacement transaction underpriced` error was recieved. The nonce will then be added to the `incrementGasPrice` queue 
 
-    **Transaction Receipt** The server returned a `Failed to get Transaction Receipt` error. Why this happens is not really known.
+  **Transaction Receipt** The server returned a `Failed to get Transaction Receipt` error. Why this happens is not really known.
     
-    **Invalid JSON** Either the RPC endpoint returned garbage, indicating some sort of failure, OR, the application returned something we don't understand. 
+  **Invalid JSON** Either the RPC endpoint returned garbage, indicating some sort of failure, OR, the application returned something we don't understand. 
     
-    **Nonce too low** The nonce is too low. These errors are usually seen in the beginning, but will correct themselves.
+  **Nonce too low** The nonce is too low. These errors are usually seen in the beginning, but will correct themselves.
     
-    **Misc** An error not accounted for in the above. If this number gets high and the script is stalling, its probably worth investigating.
+  **Misc** An error not accounted for in the above. If this number gets high and the script is stalling, its probably worth investigating.
 
 **Network Failures** Network level errors. These indicate that a failure is occuring on the network. Keep in mind this could be a result of spamming your own network, and is not necessarily an indication of the health of the LB
 
@@ -66,11 +66,11 @@ move between monitor cycles, it is likely the script is stuck because of some re
 
    **Dropped** The number of dropped nonces 
 
-        **Next** this is the lowest nonce in the `droppedNonces` array. Useful to compare to the current nonce
+   **Next** this is the lowest nonce in the `droppedNonces` array. Useful to compare to the current nonce
 
    **Incrementing Gas Price** The number of nonces that need to be replayed with a higher gas price.
 
-        **Next** this is the lowest nonce in the `incrementGasPrice` array
+   **Next** this is the lowest nonce in the `incrementGasPrice` array
     
 ## Install
 ```bash
