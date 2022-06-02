@@ -11,25 +11,12 @@
             "privateKey": "0x303627e90e92dd3c57551dc490659b0e55752fa9abd7490c905052b559074479"
         }
     },
-    "maxDelay": 1,
-    "nonceCheckDelay": 5000,
-    "logLevel": 2,
-    "deployProxy": false,
-    "deployReactive": false,
-    "deployOnly": true,
+    "maxDelay": 0,
+    "deploymentDelay": 1000,
+    "nonceCheckDelay": 10000,
+    "monitorDelay": 5000,
+    "deployOnly": false,
     "savePresets": true,
     "presetsFile": "./presets/presets1.json",
-    "dev_loop" : [
-        "loop_deployLSP8",
-        "loop_mintLSP8",
-        "loop_mintLSP8",
-        "loop_mintLSP8",
-        "loop_mintLSP8"
-    ],
-    "deployLimits": {
-        "up": 50,
-        "lsp7": 25,
-        "lsp8": 25
-    },
-    "backoff": 50
+    "logLevel": 3
 }
