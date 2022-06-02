@@ -26,28 +26,50 @@ The **monitorDelay** in the config defaults to 5 seconds. When **logLevel** is s
 It is not recommended to set the **logLevel** to anything other than 3 unless you are doing development. If it is lower than 3, increasing **maxDelay** or piping output to a file will be necessary to make sense of the output.
 
 The monitoring output 
+
 **Tx Sent** The number of mint or transfer calls that were made during the monitor cycle
+
 **Max Delay** max delay in ms set in the config
+
 **Backoff** current backoff in ms. The backoff is added to `maxDelay` between each transfer. It decrements by 1 for each request. If `backoff` does not 
 move between monitor cycles, it is likely the script is stuck because of some resource constraints on the machine itself. Or check **Network Failures** output to see if the RPC endpoint is hanging up
+
 **Successes** The number of types .on('receipt'...) is called from minting and transfer calls during the monitor cycle. This is often a low amount and is likely because Reverts are not being counted. There are likely alot of reverts happening.
+
 **Pending** The number of pending TXs in the local state. This does not refresh between monitoring cycles
+
 **Errors** Application level errors. 
+
     **Underpriced** A `replacement transaction underpriced` error was recieved. The nonce will then be added to the `incrementGasPrice` queue 
+
     **Transaction Receipt** The server returned a `Failed to get Transaction Receipt` error. Why this happens is not really known.
+    
     **Invalid JSON** Either the RPC endpoint returned garbage, indicating some sort of failure, OR, the application returned something we don't understand. 
+    
     **Nonce too low** The nonce is too low. These errors are usually seen in the beginning, but will correct themselves.
+    
     **Misc** An error not accounted for in the above. If this number gets high and the script is stalling, its probably worth investigating.
+
 **Network Failures** Network level errors. These indicate that a failure is occuring on the network. Keep in mind this could be a result of spamming your own network, and is not necessarily an indication of the health of the LB
+
    **Socket Hang up**
+
    **Disconnected preTLS** 
+
    **ECONNRESET**
+
    **ECONNREFUSED** 
+
    **ETIMEDOUT**
+
 **Nonces: Current** the current nonce at the moment the monitor cycle is reporting. This is taken directly from the state.
+
    **Dropped** The number of dropped nonces 
+
         **Next** this is the lowest nonce in the `droppedNonces` array. Useful to compare to the current nonce
+
    **Incrementing Gas Price** The number of nonces that need to be replayed with a higher gas price.
+
         **Next** this is the lowest nonce in the `incrementGasPrice` array
     
 ## Install
