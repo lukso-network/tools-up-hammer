@@ -34,7 +34,7 @@ The monitoring output
 **Backoff** current backoff in ms. The backoff is added to `maxDelay` between each transfer. It decrements by 1 for each request. If `backoff` does not 
 move between monitor cycles, it is likely the script is stuck because of some resource constraints on the machine itself. Or check **Network Failures** output to see if the RPC endpoint is hanging up
 
-**Successes** The number of types .on('receipt'...) is called from minting and transfer calls during the monitor cycle. This is often a low amount and is likely because Reverts are not being counted. There are likely alot of reverts happening.
+**Successes** The number of times `.on('receipt'...)` is called from minting and transfer calls during the monitor cycle. This is often a low amount and is likely because Reverts are not being counted. There are likely alot of reverts happening.
 
 **Pending** The number of pending TXs in the local state. This does not refresh between monitoring cycles
 
@@ -138,9 +138,7 @@ const QUIET = 4;
 
 ### presets.json
 
-The concept of presets is to provide addresses of pre-deployed UPs and LSPs to expedite script initialization. Currently there are bugs when using LSP presets, so these are empty. 
-
-Because UPs and deployed with a specific controller address, the top level keys must be the address of the controlling account that initially deployed them. 
+The concept of presets is to provide addresses of pre-deployed UPs and LSPs to expedite script initialization. Because UPs and deployed with a specific controller address, the top level keys must be the address of the controlling account that initially deployed them. These files can be generated automatically by setting **savePresets** to true in the config, as well as specifying a **presetsFile**. This file must already exist.
 
 ### Usage
 
