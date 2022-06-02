@@ -12,13 +12,13 @@
         }
     },
     "deployLimits": {
-        "up": 25,
-        "lsp7": 25,
-        "lsp8": 25
+        "up": 50,
+        "lsp7": 50,
+        "lsp8": 50
     },
-    "maxDelay": 100,
+    "maxDelay": 0,
     "deploymentDelay": 10000,
-    "nonceCheckDelay": 5000,
+    "nonceCheckDelay": 10000,
     "monitorDelay": 5000,
     "pendingNonceThreshold": 5, 
     "dev_loop" : [
@@ -38,5 +38,5 @@
     "deployReactive": false,
     "defaultGasPrice": "1000000000",
     "gasIncrement": 1,
-    "backoff": 50
+    "backoff": 15
 }
