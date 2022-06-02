@@ -17,7 +17,7 @@
         "lsp8": 50
     },
     "maxDelay": 0,
-    "deploymentDelay": 10000,
+    "deploymentDelay": 1000,
     "nonceCheckDelay": 10000,
     "monitorDelay": 5000,
     "pendingNonceThreshold": 5, 
