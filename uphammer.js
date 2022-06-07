@@ -5,21 +5,21 @@ const Web3 = require('web3');
 const crypto = require('crypto');
 const delay = require('await-delay');
 
-const mchammer = require('./lib');
+const {initUP, randomIndex } = require('./lib');
 const actions = require('./actions');
 const config = require("./config.json");
 const utils = require("./utils");
-const presets = require("./presets.json");
+
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
 
 let {state} = require("./state");
 
+// we need to override _onHttpRequestError to get network failure information
 const XHR = require('xhr2-cookies').XMLHttpRequest
 XHR.prototype._onHttpRequestError = function (request, error) {
   if (this._request !== request) {
       return;
   }
-  // A new line
   
   let msg = error.toString();
   if(msg.includes("ECONNRESET")) {
@@ -46,13 +46,13 @@ XHR.prototype._onHttpRequestError = function (request, error) {
 
 
 class UPHammer {
-
+    // the functions randomly selected in the deploy loop cycle
     deploy_actions = [
         actions.loop_deployUP,
         actions.loop_deployLSP7,
         actions.loop_deployLSP8,
     ]
-    
+    // the functions randomly selected in the transfer loop cycle
     transfer_actions = [
         actions.loop_transferLSP7,
         actions.loop_transferAllLSP7,
@@ -60,9 +60,6 @@ class UPHammer {
         actions.loop_mintLSP7,
         actions.loop_mintLSP8,
     ];
-
-    
-    
 
     constructor(user_config, user_presets) {
         // merge config
@@ -76,7 +73,7 @@ class UPHammer {
         this.web3 = new Web3(this.provider, this.config.wallets.transfer.privateKey);
         const EOA_transfer = this.web3.eth.accounts.wallet.add(this.config.wallets.transfer.privateKey);
         
-        // EOA is used for deployments
+        // deploy key is used for deployments
         const EOA_deploy = this.web3.eth.accounts.wallet.add(this.config.wallets.deploy.privateKey);
         
         
@@ -87,6 +84,7 @@ class UPHammer {
           chainId: this.config.chainId, // Chain Id of the network you want to connect to
         });
         
+        // store presets in config if they are preset
         this.config.presets = user_presets ? user_presets : {};
         
         state = {...state,
@@ -109,7 +107,7 @@ class UPHammer {
 
     init = async function(num_to_deploy) {
         for(let i=0; i < num_to_deploy; i++) {
-            await mchammer.initUP(state);
+            await initUP(state);
         }
      
     }
@@ -126,10 +124,16 @@ class UPHammer {
     }
 
     deployActors = async function () {
+        // wait until there are UPs loaded into state
         while(Object.keys(state.up).length === 0) {
             await delay(1000);
         }
+        // run custom defined dev_loop
         for(const action of this.config.dev_loop) {
+            // deployReactive set to true complicates the loop significantly.
+            // it really should be removed.
+            // if we deployReactively, we need to wait until deployment has finished before
+            // we can deploy again, otherwise we'll have nonce issues
             if(this.config.deployReactive) {
                 while(state.deploying) {
                     await delay(this.config.deploymentDelay);
@@ -140,8 +144,9 @@ class UPHammer {
             await actions[action](state);
             
         }
+        // the main deploy loop. Deploys up to the limits set in the config
         while(this.continueDeployments()) {
-            let next = mchammer.randomIndex(this.deploy_actions); 
+            let next = randomIndex(this.deploy_actions); 
             try {
                 await this.deploy_actions[next](state);
                 await delay(this.config.deploymentDelay);
@@ -150,12 +155,17 @@ class UPHammer {
                 console.log(e);
             }
         }
+        log('Finished deployments', INFO);
     }
 
+    /***
+     * This is the main loop for transfers. It runs at an interval set in config as maxDelay
+     * A random index is selected from the `transfer_actions` array
+     */
     runTransfers = async function () {
         while(true) {
 
-            let next = mchammer.randomIndex(this.transfer_actions); 
+            let next = randomIndex(this.transfer_actions); 
             try {
                 if(Object.keys(state.up).length > 0) { 
                     this.transfer_actions[next](state);    
@@ -164,28 +174,38 @@ class UPHammer {
             } catch(e) {
                 warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
+
+            // calculate the delay
             let timeToDelay;
+            // crypto.randomInt cannot handle floats, so only select randomly if we are at 1 or above
             if(this.config.maxDelay >= 1) {
                 timeToDelay = crypto.randomInt(this.config.maxDelay) + state.backoff;
             } else if(this.config.maxDelay > 0) {
-                timeToDelay = this.config.maxDelay + state.backoff;
+                // if we are between 0 and 1, just use Math.random
+                timeToDelay = Math.random(this.config.maxDelay) + state.backoff;
             } else {
                 timeToDelay = 0 + state.backoff;
             }
             
+            // apply backoff if it exists for this cycle
             state.backoff > 0 ? state.backoff-- : state.backoff = 0;
-
+            state.monitor.tx.loop++;
             await delay(timeToDelay);
         }
     }
 
+    /**
+     * This function iterates through state.pendingTxs and looks up the txhashes found there.
+     * The state.pendingTxs array stores objects of type {hash, nonce}
+     * If no TX is found for that hash, the nonce is added to the state.droppedNonces array if it doesn't already exist
+     */
     checkPendingTx = async function () {
         let txsToRemove = [];
         for(let i=0; i<state.pendingTxs.length; i++) {
-            // we do this with promises, then the indexes get messed up when transactions are removed
+            // if we do this with promises, then the indexes get messed up when transactions are removed
             // from the array asynchronously
-            // so using await unless a better solution came be found.
-            // this runs in its own thread though, so won't affect the transfers
+            // so using await unless a better solution can be found.
+            // this runs in its own thread though, so *SHOULDN'T* affect the transfers
             try {
                 let tx = await this.web3.eth.getTransaction(state.pendingTxs[i].hash);
                 if(!tx) {
@@ -208,6 +228,9 @@ class UPHammer {
     
     }
 
+    /**
+     * The loop that checks for dropped nonces. The `nonceCheckDelay` parameter in the config controls how often this is run
+     */
     nonceCheck = async function () {
     
         while(true) {
@@ -218,16 +241,19 @@ class UPHammer {
         }
     }
 
+    /**
+     * Checks the balances of both deploy and transfer accounts and aborts if both are not funded
+     */
     checkBalance = async function (wallet) {
-        log(`Checking ${wallet} balance...`, INFO);
+        log(`Checking ${wallet} balance...`, QUIET);
         if(this.config.wallets[wallet] === undefined) {
             warn(`${wallet} wallet is not properly configured`, QUIET);
         }
         let address = this.config.wallets[wallet].address;
         let balance = await this.web3.eth.getBalance(address);
-        log(`Balance: ${balance}`, INFO);
+        log(`Balance: ${balance}`, QUIET);
         if (balance === '0') {
-            warn(`[!] Go get some gas for ${this.config.wallets[wallet].address}`);
+            warn(`[!] Go get some gas for ${this.config.wallets[wallet].address}`, QUIET);
             // if(provider === L14) {
             //     warn('http://faucet.l14.lukso.network/', INFO);    
             // } else {
@@ -238,6 +264,9 @@ class UPHammer {
         return true;
     }
 
+    /**
+     * The monitor cycle. Delay time is configured with `monitorDelay`
+     */
     monitor = async function() {
         while(true) {
             await delay(this.config.monitorDelay);
@@ -245,6 +274,19 @@ class UPHammer {
         }
     }
     
+    /**
+     * Begins the chain hammering
+     * Before beginning the loops, it 
+     * - ensures both accounts are funded.
+     * - makes a query to find the current nonce for the transfer account
+     * - initializes the number of initial UPs specified in `config.initialUPs` to ensure there are UPs prior to entering the loops
+     * Then starts the following loops
+     * - Monitor
+     * - Dropped nonces check 
+     * - transfers (also mints)
+     * - Deployments
+     * Because deployment loop relies heavily on await, it is put last. This seemed to help 
+     */
     start = async function () {
         let deploy_balance = await this.checkBalance("deploy");
         let transfer_balance = await this.checkBalance("transfer");
@@ -253,7 +295,7 @@ class UPHammer {
         }
         
         state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
-        log(`[+] Transfer Wallet Nonce is ${state.nonce}`, INFO);
+        log(`Transfer Wallet Nonce is ${state.nonce}`, INFO);
         await this.init(this.config.initialUPs);
         // console.log(state);
         

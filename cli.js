@@ -25,7 +25,7 @@ if(args) {
                     presets = parsed;
                 }
             } catch(e) {
-                console.log(`[!] Failed to open ${userFiles[i]} file ${args[0]}`);
+                console.log(`[!] Failed to open ${userFiles[i]} file ${args[i]}`);
                 console.log(e);
                 process.exit();
             }

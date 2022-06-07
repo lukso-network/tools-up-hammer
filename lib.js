@@ -34,17 +34,17 @@ async function initUP(state) {
     if(config.presets[config.wallets.deploy.address]
         && config.presets[config.wallets.deploy.address].up.length > 0 
         && !state.up[config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS]) {
-        log(`[+] Found UP addresses. Skipping deployments`, INFO);
+        log(`Found UP addresses. Skipping deployments`, INFO);
         erc725_address = config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[0].KEYMANAGER_ADDRESS;
     } else if(config.presets[config.wallets.deploy.address] 
         && config.presets[config.wallets.deploy.address].up.length > 1 
         && !state.up[config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS]) {
-        log(`[+] Found Secondary UP. Skipping deployments`, INFO);
+        log(`Found Secondary UP. Skipping deployments`, INFO);
         erc725_address = config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[1].KEYMANAGER_ADDRESS;
     } else {
-        log(`[+] Deploying Profile`, INFO);
+        log(`Deploying Profile`, INFO);
         deployed = await deploy(lspFactory, config);
         if(deployed) {
             erc725_address = deployed.ERC725Account.address;
@@ -55,8 +55,8 @@ async function initUP(state) {
         
     }
 
-    log(`[+] ERC725 address:     ${erc725_address}`, INFO);
-    log(`[+] KeyManager address: ${km_address}`, INFO);
+    log(`ERC725 address:     ${erc725_address}`, INFO);
+    log(`KeyManager address: ${km_address}`, INFO);
     erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
     km = new web3.eth.Contract(KeyManager.abi, km_address);
     state.up[erc725_address] = {
@@ -203,10 +203,11 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
     
 }
 
-async function doMint(type, abi, state) {
+async function attemptMint(type, abi, state) {
     let lsp = state[type];
     let {up, EOA, web3} = state;
-
+    
+    state.monitor.tx.attemptedMint++;
     if(Object.keys(lsp.addresses).length > 0) {
         
         let asset_address = randomKey(lsp.addresses);
@@ -241,12 +242,15 @@ async function doMint(type, abi, state) {
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         
         await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state, type.toUpperCase());
+        // 
         state[type].transferable = true;
-        if(type==='lsp7') {
-            state[type].addresses[asset_address].totalSupply += mint_amt_or_id;
-        } else {
-            state[type].addresses[asset_address].totalSupply += 1;
-        }
+
+        // should remove the following. we cannot keep track of the state of the train locally
+        // if(type==='lsp7') {
+        //     state[type].addresses[asset_address].totalSupply += mint_amt_or_id;
+        // } else {
+        //     state[type].addresses[asset_address].totalSupply += 1;
+        // }
         
     } else {
         warn(`[!] No ${type} to mint`, INFO);
@@ -276,9 +280,9 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             log(`Replaying ${nonce} with gasPrice ${gasPrice}`, INFO);
         }
 
-        state.monitor.tx.sent++;
+        state.monitor.tx.mint++;
 
-        await up.km.methods.execute(abiPayload).send({
+        up.km.methods.execute(abiPayload).send({
             from: EOA.transfer.address, 
             gas: 5_000_000,
             gasPrice,
@@ -287,12 +291,12 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         .on('transactionHash', function(hash){
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
             state.pendingTxs.push({hash, nonce});
+            state.monitor.tx.hash++;
         })
         .on('receipt', function(receipt){
             log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
-            state.monitor.tx.receipts++;
+            state.monitor.tx.receipts.mints++;
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
-            
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Minting Error. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
@@ -322,9 +326,7 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         let defaultGasPrice = state.config.defaultGasPrice;
 
         next = nextNonce(state);
-        if(!next) {
-            console.log('nothing next?');
-        }
+
         nonce = next.nonce;
         gasPrice = next.gasPrice? next.gasPrice: defaultGasPrice;
         
@@ -346,11 +348,12 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         .on('transactionHash', function(hash){
             log(`Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
             state.pendingTxs.push({nonce, hash});
+            state.monitor.tx.hash++;
         })
         .on('receipt', function(receipt){
             log(`Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
-            state.monitor.tx.receipts++;
+            state.monitor.tx.receipts.transfers++;
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`Transfer Error. Nonce ${nonce}`, INFO);
@@ -376,7 +379,7 @@ module.exports = {
     transfer,
     randomIndex,
     randomKey,
-    doMint,
+    attemptMint,
     initUP,
     addNonceToDroppedNoncesIfNotPresent
 }

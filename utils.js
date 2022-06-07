@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 
-const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
+const {log, warn, monitor, DEBUG, VERBOSE, INFO, MONITOR, QUIET} = require('./logging');
 
 function nextNonce(state) {
     let nonce;
@@ -110,7 +110,10 @@ function errorHandler(state, error, nonce, receipt, gasPrice) {
         state.monitor.tx.errors.invalidJSON++;
     } else if(error.toString().includes("nonce too low")) {
         state.monitor.tx.errors.nonceTooLow++;
+    } else if(error.toString().includes("Transaction has been reverted")) {
+        state.monitor.tx.receipts.reverts++;
     } else {
+        warn(error, MONITOR); // setting this to monitor so we can see it in monitor mode
         state.monitor.tx.errors.misc++;
     }
     let hash = extractHashFromStacktrace(error);
@@ -138,8 +141,17 @@ function resetMonitor() {
             lowest: undefined
         },
         tx: {
+            loop: 0,
             sent: 0,
-            receipts: 0,
+            receipts: {
+                transfers: 0,
+                mints: 0,
+                reverts: 0
+            },
+            mint: 0,
+            attemptedTx: 0,
+            attemptedMint: 0,
+            hash: 0,
             errors: {
                 underpriced: 0,
                 transactionReceipt: 0,
@@ -159,21 +171,24 @@ function resetMonitor() {
 }
 
 function monitorCycle(state) {
+    let totalReceipts = state.monitor.tx.receipts.transfers + state.monitor.tx.receipts.mints + state.monitor.tx.receipts.reverts;
+    let realTx = state.monitor.tx.sent + state.monitor.tx.mint;
+    let txLoopRatio = ((realTx / state.monitor.tx.loop) * 100).toFixed(1);
     monitor(`************************************[*]`);
-    monitor(`Tx Sent: ${state.monitor.tx.sent} Max Delay ${state.config.maxDelay}ms Backoff ${state.backoff}ms` );
-    monitor(`Successes ${state.monitor.tx.receipts} Pending ${state.pendingTxs.length}`);
-    monitor(`Errors: `);
-    monitor(`    Underpriced ${state.monitor.tx.errors.underpriced}`);
-    monitor(`    Transaction Receipt ${state.monitor.tx.errors.transactionReceipt}`);
-    monitor(`    Invalid JSON Response ${state.monitor.tx.errors.invalidJSON}`);
-    monitor(`    Nonce too low ${state.monitor.tx.errors.nonceTooLow}`);
+    monitor(`Max Delay ${state.config.maxDelay}ms Backoff ${state.backoff}ms`);
+    monitor(`Tx Total ${realTx} Cycles ${state.monitor.tx.loop} Ratio ${txLoopRatio}%`); 
+    monitor(`    Transfer ${state.monitor.tx.sent} Attempted ${state.monitor.tx.attemptedTx}`);
+    monitor(`    Mint     ${state.monitor.tx.mint}  Attempted ${state.monitor.tx.attemptedMint}` );
+    monitor(`Receipts ${totalReceipts} Pending ${state.pendingTxs.length} Tx Hashes ${state.monitor.tx.hash}`);
+    monitor(`    Transfers ${state.monitor.tx.receipts.transfers} Mints ${state.monitor.tx.receipts.mints} Reverts ${state.monitor.tx.receipts.reverts}`)
+    monitor(`Errors `);
+    monitor(`    Underpriced ${state.monitor.tx.errors.underpriced}             Transaction Receipt ${state.monitor.tx.errors.transactionReceipt}`);
+    monitor(`    Invalid JSON Response ${state.monitor.tx.errors.invalidJSON}   Nonce too low ${state.monitor.tx.errors.nonceTooLow}`);
     monitor(`    Misc    ${state.monitor.tx.errors.misc}`);
         
     monitor(`Network Failures`);
-    monitor(`   Socket Hang up ${state.monitor.networkFailures.socketHangUp}`)
-    monitor(`   Disconnected preTLS ${state.monitor.networkFailures.socketDisconnectedTLS}`)
-    monitor(`   ECONNRESET ${state.monitor.networkFailures.econnreset}`)
-    monitor(`   ECONNREFUSED ${state.monitor.networkFailures.econnrefused}`);
+    monitor(`   Socket Hang up ${state.monitor.networkFailures.socketHangUp}    Disconnected preTLS ${state.monitor.networkFailures.socketDisconnectedTLS}`)
+    monitor(`   ECONNRESET ${state.monitor.networkFailures.econnreset}          ECONNREFUSED ${state.monitor.networkFailures.econnrefused}`)
     monitor(`   ETIMEDOUT ${state.monitor.networkFailures.timedout}`)
 
     monitor(`Nonces: Current ${state.nonce}`);

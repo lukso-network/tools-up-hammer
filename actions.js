@@ -3,15 +3,14 @@ const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/Universal
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const LSP8Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP8Mintable.json');
-const mchammer = require('./lib');
-const config = require("./config.json");
+const { deploy, deployLSP7, deployLSP8, transfer, randomKey, attemptMint } = require('./lib');
 
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
-const {savePresets} = require("./utils");
+const {savePresets, errorHandler} = require("./utils");
 
 async function loop_deployUP(state) {
     if(Object.keys(state.up).length < state.config.deployLimits.up) {
-        log(`[+] Deploying new UP`, INFO);
+        log(`Deploying new UP`, INFO);
         let {lspFactory, web3, EOA, up, config} = state;
         let erc725, km;
         let erc725_address, km_address;
@@ -24,7 +23,7 @@ async function loop_deployUP(state) {
             erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
             km = new web3.eth.Contract(KeyManager.abi, km_address);
         } else {
-            let deployed = await mchammer.deploy(lspFactory, config);
+            let deployed = await deploy(lspFactory, config);
             if(deployed) {
                 erc725_address = deployed.ERC725Account.address;
                 km_address = deployed.KeyManager.address;
@@ -36,8 +35,8 @@ async function loop_deployUP(state) {
         
         
             
-        log(`[+] ERC725 address:     ${erc725_address}`, INFO);
-        log(`[+] KeyManager address: ${km_address}`, INFO);
+        log(`ERC725 address:     ${erc725_address}`, INFO);
+        log(`KeyManager address: ${km_address}`, INFO);
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
         km = new web3.eth.Contract(KeyManager.abi, km_address);
         state.up[erc725_address] = {
@@ -54,7 +53,7 @@ async function loop_deployUP(state) {
 async function loop_deployLSP7(state) {
     let config = state.config;
     if(Object.keys(state.lsp7.addresses).length < config.deployLimits.lsp7) {
-        console.log(`[+] Deploying new LSP7`);
+        log(`Deploying new LSP7`, INFO);
         let {lspFactory, web3, EOA, up, lsp7} = state;
         let lsp7_asset, erc725_address;
 
@@ -72,12 +71,12 @@ async function loop_deployLSP7(state) {
             if(Object.keys(up).length == 0 ) {
                 return;
             }
-            erc725_address = mchammer.randomKey(up); 
-            lsp7_asset = await mchammer.deployLSP7(lspFactory, web3, erc725_address, EOA, state);
+            erc725_address = randomKey(up); 
+            lsp7_asset = await deployLSP7(lspFactory, web3, erc725_address, EOA, state);
         }
 
         if(lsp7_asset) {
-            console.log(`[+] LSP7 address:       ${lsp7_asset._address}`);
+            console.log(`LSP7 address:       ${lsp7_asset._address}`);
             state.lsp7.addresses[lsp7_asset._address] = {
                 owner: erc725_address,
                 totalSupply: 0,
@@ -94,7 +93,7 @@ async function loop_deployLSP7(state) {
 async function loop_deployLSP8(state) {
     let config = state.config;
     if(Object.keys(state.lsp8.addresses).length < config.deployLimits.lsp8) {
-        console.log(`[+] Deploying new LSP8`);
+        log(`Deploying new LSP8`, INFO);
         let {lspFactory, web3, EOA, up, lsp8} = state;
         let lsp8_asset, erc725_address
         let totalSupply = 0; 
@@ -108,10 +107,10 @@ async function loop_deployLSP8(state) {
             totalSupply = await lsp8_asset.methods.totalSupply().call();
             currentId = totalSupply;
         } else {
-            erc725_address = mchammer.randomKey(up); 
-            lsp8_asset = await mchammer.deployLSP8(lspFactory, web3, erc725_address, EOA, state, 
+            erc725_address = randomKey(up); 
+            lsp8_asset = await deployLSP8(lspFactory, web3, erc725_address, EOA, state, 
                 function(lsp8_asset) {
-                    console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
+                    log(`LSP8 address:       ${lsp8_asset._address}`, INFO);
                 
                     state.lsp8.addresses[lsp8_asset._address] = {
                         owner: erc725_address,
@@ -123,7 +122,7 @@ async function loop_deployLSP8(state) {
         }
 
         if (lsp8_asset) {
-            console.log(`[+] LSP8 address:       ${lsp8_asset._address}`);
+            log(`LSP8 address:       ${lsp8_asset._address}`, INFO);
         
             state.lsp8.addresses[lsp8_asset._address] = {
                 owner: erc725_address,
@@ -140,81 +139,96 @@ async function loop_deployLSP8(state) {
 }
 async function loop_mintLSP7(state) {
     if(Object.keys(state.lsp7.addresses).length > 0) {
-        await mchammer.doMint('lsp7', LSP7Mintable.abi, state);
+        await attemptMint('lsp7', LSP7Mintable.abi, state);
     } else {
-       log('[!] No LSP7 to mint', VERBOSE);
+       warn('No LSP7 to mint', VERBOSE);
     }
     
 }
 async function loop_mintLSP8(state) {
     
     if(Object.keys(state.lsp8.addresses).length > 0) {
-        await mchammer.doMint('lsp8', LSP8Mintable.abi, state);
+        await attemptMint('lsp8', LSP8Mintable.abi, state);
     } else {
-        log('[!] No LSP8 to Mint', VERBOSE);
+        warn('No LSP8 to Mint', VERBOSE);
     }
 }
 
 async function loop_transferLSP7(state) {
-    do_transferLSP7(state, undefined);
+    attemptTransferLSP7(state, undefined);
 }
 
 async function loop_transferAllLSP7(state) {
-    do_transferLSP7(state, 'all');
+    attemptTransferLSP7(state, 'all');
 }
 
-async function do_transferLSP7(state, tx_amt_type) {
+async function attemptTransferLSP7(state, tx_amt_type) {
     
     let {web3, EOA, up, lsp7} = state;
     try {
+        state.monitor.tx.attemptedTx++;
         if(lsp7.transferable) {
             let amount;
             let totalSupply = "0";
             let lsp7_asset;
             // as long as one lsp7 asset has a totalSupply >= transfer amount, this won't get stuck
             // need to ensure that condition is always met
-            while(totalSupply === "0") {
-                let lsp7_address = mchammer.randomKey(lsp7.addresses);
+
+            // here we should not care if there are tokens minted to the LSP7
+            // while(totalSupply === "0") {
+                let lsp7_address = randomKey(lsp7.addresses);
                 lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
-                totalSupply = await lsp7_asset.methods.totalSupply().call();    
-            }
+            //     totalSupply = await lsp7_asset.methods.totalSupply().call();    
+            // }
 
-            let sender_balance = "0";
-            let erc725_address;
-            while(sender_balance === "0") {
-                erc725_address = mchammer.randomKey(up);
-                sender_balance = await lsp7_asset.methods.balanceOf(erc725_address).call();
-            }
+            // let sender_balance = "0";
+            let erc725_address, sender_balance;
+
+            // while(sender_balance === "0") {
+                erc725_address = randomKey(up);
+                // sender_balance = await lsp7_asset.methods.balanceOf(erc725_address).call();
+            // }
             let sending_address = erc725_address;
-            log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`, VERBOSE);
+            lsp7_asset.methods.balanceOf(erc725_address).call().then((sender_balance) => {
+                log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`, VERBOSE);   
+                
+                if(sender_balance === "0") {
+                    // if the senders balance is empty, we can attempt a revert by sending 1
+                    sender_balance = 1;
+                };
+            
 
-            if(tx_amt_type === 'all') {
-                amount = parseInt(sender_balance);
-            } else {
-                amount = crypto.randomInt(parseInt(sender_balance));
-            }
+                if(tx_amt_type === 'all') {
+                    // this could still be inaccurate, because between the time the call was made, another transfer COULD have been mined
+                    amount = parseInt(sender_balance);
+                } else {
+                    amount = crypto.randomInt(parseInt(sender_balance));
+                }
 
-            // with an unknown amount of UPs, select a destination randomly
-            let recv_address = sending_address;
-            while(recv_address === sending_address)
-            {
-                // loop until we find an address that is not the sender
-                // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
-                // recv_address = Object.keys(up)[other_idx];
-                recv_address = mchammer.randomKey(up);
-            }
-            // console.log(`[+] Receiver will be ${recv_address}`);
+                // with an unknown amount of UPs, select a destination randomly
+                let recv_address = sending_address;
+                while(recv_address === sending_address)
+                {
+                    // loop until we find an address that is not the sender
+                    recv_address = randomKey(up);
+                }
+                log(`Receiver will be ${recv_address}`, DEBUG);
 
-            erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
-            km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
-        
-            mchammer.transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state, 'lsp7')
+                erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
+                km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
+            
+                transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state, 'lsp7')
+                
+            });
+            
+            
         } else {
             warn('No LSP7 to Transfer', DEBUG);
         }
     } catch(e) {
         warn("ERROR when transfering LSP7", INFO);
         warn(e, INFO);
+        errorHandler(state, e);
     }
     
 }
@@ -224,6 +238,7 @@ async function loop_transferLSP8(state) {
     log(`[+] Transfering LSP8`, DEBUG);
     let {web3, EOA, up, lsp8} = state;
     try {
+        state.monitor.tx.attemptedTx++;
         if(lsp8.transferable) {
             let totalSupply = "0";
             let lsp8_contract, lsp8_address;
@@ -234,7 +249,7 @@ async function loop_transferLSP8(state) {
             // need to ensure that condition is always met
             // additionally, if using presets, the LSP8 owner could be a UP that has not been loaded in yet
             while(keepSearching) {
-                lsp8_address = mchammer.randomKey(lsp8.addresses);
+                lsp8_address = randomKey(lsp8.addresses);
                 lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);
                 totalSupply = await lsp8_contract.methods.totalSupply().call();
 
@@ -255,8 +270,6 @@ async function loop_transferLSP8(state) {
                 
             }
             
-            
-            
             log(`[+] Sender ${owner} owns ${tokenIdBytes} token`, DEBUG);
 
             // select a random recipient
@@ -266,19 +279,16 @@ async function loop_transferLSP8(state) {
                 // loop until we find an address that is not the sender
                 // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
                 // recv_address = Object.keys(up)[other_idx];
-                recv_address = mchammer.randomKey(up);
+                recv_address = randomKey(up);
             }
             log(`[+] Receiver will be ${recv_address}`, DEBUG);
 
             // send
-            if(up[owner] === undefined) {
-                console.log('huh?')
-            }
             erc725 = new web3.eth.Contract(UniversalProfile.abi, owner);
             km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
             log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`, DEBUG);
             
-            await mchammer.transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state, 'lsp8');
+            transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state, 'lsp8');
         
         } else {
             warn('[!] No LSP8 to transfer', DEBUG);
@@ -286,6 +296,7 @@ async function loop_transferLSP8(state) {
     } catch(e) {
         warn("ERROR when transferring LSP8", INFO);
         console.log(e);
+        errorHandler(state, e);
     }
     
 }
