@@ -19,7 +19,24 @@ function warn(msg, level) {
 }
 
 function monitor(msg) {
-    console.log("[*] " + msg)
+    if(typeof(msg) === 'string') {
+        console.log("[*] " + msg)
+    } else {
+        let numColumns = msg.length;
+        let maxLength = 66;
+        let spacePerColumn = maxLength / numColumns;
+        let formatted = "";
+        for(let i=0; i<msg.length; i++) {
+            formatted += msg[i];
+            let paddingLength = Math.floor(spacePerColumn - msg[i].length);
+            if (paddingLength > 0) {
+                formatted += new Array(paddingLength).join(" "); 
+            }
+            
+        }
+        console.log("[*] " + formatted)
+    }
+    
 }
 
 module.exports = {

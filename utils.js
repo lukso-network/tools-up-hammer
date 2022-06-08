@@ -40,6 +40,25 @@ function nextNonce(state) {
     return {nonce, gasPrice};
 }
 
+function storeSentNonce(state, nonce) {
+    state.sentNonces.push(nonce);
+    state.sentNonces.sort();
+}
+
+/**
+ * 
+ * @param {*} state 
+ * @param {*} nonce 
+ * This function removes nonces from the sentNonces array. It means that we have received confirmation 
+ * that the TX that was sent with that nonce did not get lost due to some network failure
+ */
+function accountForNonce(state, nonce) {
+    let index = state.sentNonces.indexOf(nonce);
+    if(index > -1) {
+        state.sentNonces.splice(index, 1);
+    }
+}
+
 function addNonceToDroppedNoncesIfNotPresent(state, nonce) {
     if(state.droppedNonces.indexOf(nonce) >= 0) {  return; }
     state.droppedNonces.push(nonce);
@@ -179,31 +198,45 @@ function resetMonitor() {
     }
 }
 
+function formatNonces(nonces) {
+    let output = "";
+    let max = 5;
+    let loopMax = nonces.length > max ? max : nonces.length;
+    for(let i=0; i<loopMax; i++) {
+        output += `${nonces[i]}, `;
+    }
+    return output;
+}
+
 function monitorCycle(state) {
     let totalReceipts = state.monitor.tx.receipts.transfers + state.monitor.tx.receipts.mints + state.monitor.tx.receipts.reverts;
     let realTx = state.monitor.tx.sent + state.monitor.tx.mint;
     let txLoopRatio = ((realTx / state.monitor.tx.loop) * 100).toFixed(1);
     let totalErrors = state.monitor.tx.errors.underpriced + state.monitor.tx.errors.transactionReceipt + state.monitor.tx.errors.invalidJSON + state.monitor.tx.errors.nonceTooLow
+    let unaccountedFor = formatNonces(state.sentNonces);
+    let droppedNonces = formatNonces(state.droppedNonces);
+    let incrementGasPriceNonces = formatNonces(state.incrementGasPrice.map(tx => tx.nonce));
     monitor(`************************************[*]`);
-    monitor(`Max Delay ${state.config.maxDelay}ms Backoff ${state.backoff}ms`);
-    monitor(`Tx Total ${realTx} Cycles ${state.monitor.tx.loop} Ratio ${txLoopRatio}%`); 
-    monitor(`    Transfer ${state.monitor.tx.sent} Attempted ${state.monitor.tx.attemptedTx}`);
-    monitor(`    Mint     ${state.monitor.tx.mint}  Attempted ${state.monitor.tx.attemptedMint}` );
-    monitor(`Receipts ${totalReceipts} Pending ${state.pendingTxs.length} Tx Hashes ${state.monitor.tx.hash}`);
-    monitor(`    Transfers ${state.monitor.tx.receipts.transfers} Mints ${state.monitor.tx.receipts.mints} Reverts ${state.monitor.tx.receipts.reverts}`)
+    monitor([`Max Delay ${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`]);
+    monitor([`Tx Total ${realTx}`, `Cycles ${state.monitor.tx.loop}`, `Ratio ${txLoopRatio}%`]); 
+    monitor([`    Transfer ${state.monitor.tx.sent}`, `Attempted ${state.monitor.tx.attemptedTx}`]);
+    monitor([`    Mint     ${state.monitor.tx.mint}`,  `Attempted ${state.monitor.tx.attemptedMint}` ]);
+    monitor([`Receipts ${totalReceipts}`, `Pending ${state.pendingTxs.length}`, `Tx Hashes ${state.monitor.tx.hash}`]);
+    monitor([`    Transfers ${state.monitor.tx.receipts.transfers}`, `Mints ${state.monitor.tx.receipts.mints}`, `Reverts ${state.monitor.tx.receipts.reverts}`])
     monitor(`Errors ${totalErrors}`);
-    monitor(`    Underpriced ${state.monitor.tx.errors.underpriced}             Transaction Receipt ${state.monitor.tx.errors.transactionReceipt}`);
-    monitor(`    Invalid JSON Response ${state.monitor.tx.errors.invalidJSON}   Nonce too low ${state.monitor.tx.errors.nonceTooLow}`);
-    monitor(`    Tx Not Mined ${state.monitor.tx.errors.txNotMined}             Misc    ${state.monitor.tx.errors.misc}`);
+    monitor([`    Underpriced ${state.monitor.tx.errors.underpriced}`,             `Transaction Receipt ${state.monitor.tx.errors.transactionReceipt}`]);
+    monitor([`    Invalid JSON Response ${state.monitor.tx.errors.invalidJSON}`,   `Nonce too low ${state.monitor.tx.errors.nonceTooLow}`]);
+    monitor([`    Tx Not Mined ${state.monitor.tx.errors.txNotMined}`,             `Misc    ${state.monitor.tx.errors.misc}`]);
         
     monitor(`Network Failures`);
-    monitor(`   Socket Hang up ${state.monitor.networkFailures.socketHangUp}    Disconnected preTLS ${state.monitor.networkFailures.socketDisconnectedTLS}`)
-    monitor(`   ECONNRESET ${state.monitor.networkFailures.econnreset}          ECONNREFUSED ${state.monitor.networkFailures.econnrefused}`)
-    monitor(`   ETIMEDOUT ${state.monitor.networkFailures.timedout}             ENOTFOUND ${state.monitor.networkFailures.enotfound}`)           
+    monitor([`   Socket Hang up ${state.monitor.networkFailures.socketHangUp}`,    `Disconnected preTLS ${state.monitor.networkFailures.socketDisconnectedTLS}`])
+    monitor([`   ECONNRESET ${state.monitor.networkFailures.econnreset}`,          `ECONNREFUSED ${state.monitor.networkFailures.econnrefused}`])
+    monitor([`   ETIMEDOUT ${state.monitor.networkFailures.timedout}`,             `ENOTFOUND ${state.monitor.networkFailures.enotfound}`])           
 
     monitor(`Nonces: Current ${state.nonce}`);
-    monitor(`   Dropped ${state.droppedNonces.length } Next ${state.droppedNonces[0] ? state.droppedNonces[0] : ''}`)
-    monitor(`   Incrementing Gas Price ${state.incrementGasPrice.length} Next ${state.incrementGasPrice[0] ? state.incrementGasPrice[0].nonce : ''}`);
+    monitor([`   Dropped ${state.droppedNonces.length }`,                  `[${droppedNonces}...]`])
+    monitor([`   Incrementing Gas Price ${state.incrementGasPrice.length}`, `[${incrementGasPriceNonces}...]`]);
+    monitor([`   Unaccounted ${state.sentNonces.length}`,                  `[${unaccountedFor}...] `]);
     monitor(`************************************[*]`);
 
     state.monitor = resetMonitor();
@@ -287,5 +320,7 @@ module.exports = {
     monitorCycle,
     resetMonitor,
     errorHandler,
-    savePresets
+    savePresets,
+    accountForNonce,
+    storeSentNonce
 }

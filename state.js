@@ -14,6 +14,7 @@ let state = {
     droppedNonces: [],
     incrementGasPrice: [],
     pendingTxs: [],
+    sentNonces: [],
     web3: null,
     lspFactory: null,
     DEPLOY_PROXY: null,

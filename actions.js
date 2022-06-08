@@ -167,27 +167,17 @@ async function attemptTransferLSP7(state, tx_amt_type) {
     let {web3, EOA, up, lsp7} = state;
     try {
         state.monitor.tx.attemptedTx++;
-        if(lsp7.transferable) {
+        // if(lsp7.transferable) {
             let amount;
-            let totalSupply = "0";
             let lsp7_asset;
-            // as long as one lsp7 asset has a totalSupply >= transfer amount, this won't get stuck
-            // need to ensure that condition is always met
 
             // here we should not care if there are tokens minted to the LSP7
-            // while(totalSupply === "0") {
-                let lsp7_address = randomKey(lsp7.addresses);
-                lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
-            //     totalSupply = await lsp7_asset.methods.totalSupply().call();    
-            // }
-
-            // let sender_balance = "0";
-            let erc725_address, sender_balance;
-
-            // while(sender_balance === "0") {
-                erc725_address = randomKey(up);
-                // sender_balance = await lsp7_asset.methods.balanceOf(erc725_address).call();
-            // }
+            let lsp7_address = randomKey(lsp7.addresses);
+            lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
+            
+            let erc725_address;
+            erc725_address = randomKey(up);
+            
             let sending_address = erc725_address;
             
             lsp7_asset.methods.balanceOf(erc725_address).call().then((sender_balance) => {
@@ -198,7 +188,6 @@ async function attemptTransferLSP7(state, tx_amt_type) {
                     sender_balance = 1;
                 };
             
-
                 if(tx_amt_type === 'all') {
                     // this could still be inaccurate, because between the time the call was made, another transfer COULD have been mined
                     amount = parseInt(sender_balance);
@@ -221,14 +210,12 @@ async function attemptTransferLSP7(state, tx_amt_type) {
                 transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state, 'lsp7')
                 
             }).catch((e) => {
-                console.log(e);
+                // console.log(e);
                 errorHandler(state, e);
-            });
-            
-            
-        } else {
-            warn('No LSP7 to Transfer', DEBUG);
-        }
+            });     
+        // } else {
+        //     warn('No LSP7 to Transfer', DEBUG);
+        // }
     } catch(e) {
         warn("ERROR when transfering LSP7", INFO);
         warn(e, INFO);
@@ -243,7 +230,7 @@ async function loop_transferLSP8(state) {
     let {web3, EOA, up, lsp8} = state;
     try {
         state.monitor.tx.attemptedTx++;
-        if(lsp8.transferable) {
+        // if(lsp8.transferable) {
             let totalSupply = "0";
             let lsp8_contract, lsp8_address;
             let tokenId, tokenIdBytes;
@@ -294,12 +281,12 @@ async function loop_transferLSP8(state) {
             
             transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state, 'lsp8');
         
-        } else {
-            warn('[!] No LSP8 to transfer', DEBUG);
-        }
+        // } else {
+        //     warn('[!] No LSP8 to transfer', DEBUG);
+        // }
     } catch(e) {
         warn("ERROR when transferring LSP8", INFO);
-        console.log(e);
+        // console.log(e);
         errorHandler(state, e);
     }
     

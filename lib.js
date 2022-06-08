@@ -9,7 +9,7 @@ const config = require("./config.json");
 
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
 
-const {nextNonce, errorHandler, randomIndex, randomKey, logTx, addNonceToDroppedNoncesIfNotPresent, savePresets } = require("./utils");
+const {nextNonce, errorHandler, randomIndex, randomKey, logTx, addNonceToDroppedNoncesIfNotPresent, savePresets, accountForNonce, storeSentNonce } = require("./utils");
 
 const OPERATION_CALL = 0;
 
@@ -241,9 +241,9 @@ async function attemptMint(type, abi, state) {
         }
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         
-        await mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state, type.toUpperCase());
+        mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state, type.toUpperCase());
         // 
-        state[type].transferable = true;
+        
 
         // should remove the following. we cannot keep track of the state of the train locally
         // if(type==='lsp7') {
@@ -281,7 +281,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         }
 
         state.monitor.tx.mint++;
-
+        storeSentNonce(state, nonce);
         up.km.methods.execute(abiPayload).send({
             from: EOA.transfer.address, 
             gas: 5_000_000,
@@ -292,15 +292,18 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
             state.pendingTxs.push({hash, nonce});
             state.monitor.tx.hash++;
+            accountForNonce(state, nonce);
         })
         .on('receipt', function(receipt){
             log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
+            state[type].transferable = true;
             state.monitor.tx.receipts.mints++;
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
+            accountForNonce(state, nonce);
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`[!] Minting Error. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
-            
+            accountForNonce(state, nonce);
             warn(error, VERBOSE);
             errorHandler(state, error, nonce, receipt, gasPrice);
         });
@@ -308,7 +311,8 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
     } catch(e) {
         warn(`Error during minting. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         // console.log(e);
-       errorHandler(state, e, nonce, null, gasPrice);
+        accountForNonce(state, nonce); 
+        errorHandler(state, e, nonce, null, gasPrice);
     }
     
 }
@@ -339,6 +343,8 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
 
         state.monitor.tx.sent++;
 
+        storeSentNonce(state, nonce);
+        
         up.km.methods.execute(abiPayload).send({
             from: up.EOA.transfer.address, 
             gas: 5_000_000,
@@ -349,21 +355,25 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
             log(`Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
             state.pendingTxs.push({nonce, hash});
             state.monitor.tx.hash++;
+            accountForNonce(state, nonce);
         })
         .on('receipt', function(receipt){
             log(`Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
             state.monitor.tx.receipts.transfers++;
+            accountForNonce(state, nonce);
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             warn(`Transfer Error. Nonce ${nonce}`, INFO);
             log(error, VERBOSE);
+            accountForNonce(state, nonce);
             errorHandler(state, error, nonce, receipt, gasPrice);
            
         });
     } catch(e) {
         warn(`Error during transfer. Nonce ${nonce} GasPrice ${gasPrice}`, INFO);
         console.log(e, VERBOSE);
+        accountForNonce(state, nonce);
         errorHandler(state, e, nonce, null, gasPrice);
        
     }
