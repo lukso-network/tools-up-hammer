@@ -32,6 +32,8 @@ XHR.prototype._onHttpRequestError = function (request, error) {
       state.monitor.networkFailures.socketHangUp++;
   } else if(msg.includes("ETIME")) {
       state.monitor.networkFailures.timedout++;
+  } else if(msg.includes("ENOTFOUND")) {
+      state.monitor.networkFailures.enotfound++;
   } else {
     console.log(error);
   }

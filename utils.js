@@ -13,7 +13,11 @@ function nextNonce(state) {
             log(`Dropped nonces ${state.droppedNonces.length}`, VERBOSE);
             
         }
-        if(droppedNonce < replacementNonce || replacementNonce === undefined) {
+        // we WERE preferring the lesser of the two nonces
+        // but this could potentially cause the increment gas price infinite loop bc that loop only happens when the 
+        // dropped nonces queue begins after the increment gasPrice queue.
+        // if(droppedNonce < replacementNonce || replacementNonce === undefined) {
+        if(droppedNonce) {
             nonce = state.droppedNonces.shift();
         } else {
             let next = state.incrementGasPrice.shift();
@@ -96,6 +100,7 @@ function backoff(state) {
 }
 
 function errorHandler(state, error, nonce, receipt, gasPrice) {
+    // Transaction was not mined within 750 seconds
     if(error.toString().includes("replacement transaction underpriced")) {
         state.monitor.tx.errors.underpriced++;
         replayAndIncrementGasPrice(state, nonce, gasPrice);
@@ -112,6 +117,8 @@ function errorHandler(state, error, nonce, receipt, gasPrice) {
         state.monitor.tx.errors.nonceTooLow++;
     } else if(error.toString().includes("Transaction has been reverted")) {
         state.monitor.tx.receipts.reverts++;
+    } else if(error.toString().includes("Transaction was not mined")) {
+        state.monitor.tx.errors.txNotMined++;
     } else {
         warn(error, MONITOR); // setting this to monitor so we can see it in monitor mode
         state.monitor.tx.errors.misc++;
@@ -157,12 +164,14 @@ function resetMonitor() {
                 transactionReceipt: 0,
                 invalidJSON: 0,
                 nonceTooLow: 0,
+                txNotMined: 0,
                 misc: 0
             },
         },
         networkFailures: {
             econnreset: 0,
             econnrefused: 0,
+            enotfound: 0,
             socketDisconnectedTLS: 0,
             socketHangUp: 0,
             timedout: 0
@@ -174,6 +183,7 @@ function monitorCycle(state) {
     let totalReceipts = state.monitor.tx.receipts.transfers + state.monitor.tx.receipts.mints + state.monitor.tx.receipts.reverts;
     let realTx = state.monitor.tx.sent + state.monitor.tx.mint;
     let txLoopRatio = ((realTx / state.monitor.tx.loop) * 100).toFixed(1);
+    let totalErrors = state.monitor.tx.errors.underpriced + state.monitor.tx.errors.transactionReceipt + state.monitor.tx.errors.invalidJSON + state.monitor.tx.errors.nonceTooLow
     monitor(`************************************[*]`);
     monitor(`Max Delay ${state.config.maxDelay}ms Backoff ${state.backoff}ms`);
     monitor(`Tx Total ${realTx} Cycles ${state.monitor.tx.loop} Ratio ${txLoopRatio}%`); 
@@ -181,15 +191,15 @@ function monitorCycle(state) {
     monitor(`    Mint     ${state.monitor.tx.mint}  Attempted ${state.monitor.tx.attemptedMint}` );
     monitor(`Receipts ${totalReceipts} Pending ${state.pendingTxs.length} Tx Hashes ${state.monitor.tx.hash}`);
     monitor(`    Transfers ${state.monitor.tx.receipts.transfers} Mints ${state.monitor.tx.receipts.mints} Reverts ${state.monitor.tx.receipts.reverts}`)
-    monitor(`Errors `);
+    monitor(`Errors ${totalErrors}`);
     monitor(`    Underpriced ${state.monitor.tx.errors.underpriced}             Transaction Receipt ${state.monitor.tx.errors.transactionReceipt}`);
     monitor(`    Invalid JSON Response ${state.monitor.tx.errors.invalidJSON}   Nonce too low ${state.monitor.tx.errors.nonceTooLow}`);
-    monitor(`    Misc    ${state.monitor.tx.errors.misc}`);
+    monitor(`    Tx Not Mined ${state.monitor.tx.errors.txNotMined}             Misc    ${state.monitor.tx.errors.misc}`);
         
     monitor(`Network Failures`);
     monitor(`   Socket Hang up ${state.monitor.networkFailures.socketHangUp}    Disconnected preTLS ${state.monitor.networkFailures.socketDisconnectedTLS}`)
     monitor(`   ECONNRESET ${state.monitor.networkFailures.econnreset}          ECONNREFUSED ${state.monitor.networkFailures.econnrefused}`)
-    monitor(`   ETIMEDOUT ${state.monitor.networkFailures.timedout}`)
+    monitor(`   ETIMEDOUT ${state.monitor.networkFailures.timedout}             ENOTFOUND ${state.monitor.networkFailures.enotfound}`)           
 
     monitor(`Nonces: Current ${state.nonce}`);
     monitor(`   Dropped ${state.droppedNonces.length } Next ${state.droppedNonces[0] ? state.droppedNonces[0] : ''}`)
