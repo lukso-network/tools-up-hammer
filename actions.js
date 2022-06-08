@@ -76,7 +76,7 @@ async function loop_deployLSP7(state) {
         }
 
         if(lsp7_asset) {
-            console.log(`LSP7 address:       ${lsp7_asset._address}`);
+            log(`LSP7 address:       ${lsp7_asset._address}`, INFO);
             state.lsp7.addresses[lsp7_asset._address] = {
                 owner: erc725_address,
                 totalSupply: 0,
@@ -189,6 +189,7 @@ async function attemptTransferLSP7(state, tx_amt_type) {
                 // sender_balance = await lsp7_asset.methods.balanceOf(erc725_address).call();
             // }
             let sending_address = erc725_address;
+            
             lsp7_asset.methods.balanceOf(erc725_address).call().then((sender_balance) => {
                 log(`[+] Sender ${sending_address} has balance of ${sender_balance} tokens`, VERBOSE);   
                 
@@ -219,6 +220,9 @@ async function attemptTransferLSP7(state, tx_amt_type) {
             
                 transfer(lsp7_asset, sending_address, recv_address, amount, {erc725, km, EOA}, state, 'lsp7')
                 
+            }).catch((e) => {
+                console.log(e);
+                errorHandler(state, e);
             });
             
             
