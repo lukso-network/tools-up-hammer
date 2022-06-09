@@ -213,7 +213,7 @@ class UPHammer {
                 let tx = await this.web3.eth.getTransaction(hash);
                 if(!tx) {
                     // tx is dropped
-                    utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[hash].nonce);
+                    utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[hash]);
                     // txsToRemove.push(i);
                     delete state.pendingTxs[hash];
                 } else if(tx.blockNumber) {
