@@ -23,7 +23,7 @@ function monitor(msg) {
         console.log("[*] " + msg)
     } else {
         let numColumns = msg.length;
-        let maxLength = 66;
+        let maxLength = 80;
         let spacePerColumn = maxLength / numColumns;
         let formatted = "";
         for(let i=0; i<msg.length; i++) {
