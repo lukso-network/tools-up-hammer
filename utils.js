@@ -16,8 +16,9 @@ function nextNonce(state) {
         // we WERE preferring the lesser of the two nonces
         // but this could potentially cause the increment gas price infinite loop bc that loop only happens when the 
         // dropped nonces queue begins after the increment gasPrice queue.
-        // if(droppedNonce < replacementNonce || replacementNonce === undefined) {
-        if(droppedNonce) {
+        // ATM we have reverted back because the bug under investigation was likely elsewhere.
+        if(droppedNonce < replacementNonce || replacementNonce === undefined) {
+        // if(droppedNonce) {
             nonce = state.droppedNonces.shift();
         } else {
             let next = state.incrementGasPrice.shift();
@@ -219,7 +220,7 @@ function monitorCycle(state) {
     let unaccountedFor = formatNonces(state.sentNonces);
     let droppedNonces = formatNonces(state.droppedNonces);
     let incrementGasPriceNonces = formatNonces(state.incrementGasPrice.map(tx => tx.nonce));
-    let pendingNonces = state.pendingTxs.map(tx=>tx.nonce).sort();
+    let pendingNonces = Object.values(state.pendingTxs).sort();
     let pendingNoncesFormatted = formatNonces(pendingNonces);
     
     monitor(`************************************[*]`);
@@ -227,7 +228,7 @@ function monitorCycle(state) {
     monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`]); 
     monitor([`Transfer`, `${state.monitor.tx.sent}`, `Attempted`, `${state.monitor.tx.attemptedTx}`]);
     monitor([`    Mint`, `${state.monitor.tx.mint}`,  `Attempted`, `${state.monitor.tx.attemptedMint}` ]);
-    monitor([`Receipts`, `${totalReceipts}`, `Pending`, `${state.pendingTxs.length}`, `Tx Hashes`, `${state.monitor.tx.hash}`]);
+    monitor([`Receipts`, `${totalReceipts}`, `Pending`, `${Object.keys(state.pendingTxs).length}`, `Tx Hashes`, `${state.monitor.tx.hash}`]);
     monitor([`    Transfers`, `${state.monitor.tx.receipts.transfers}`, `Mints`, `${state.monitor.tx.receipts.mints}`, `Reverts ${state.monitor.tx.receipts.reverts}`])
     monitor(`Errors ${totalErrors}`);
     monitor([`    Underpriced`, `${state.monitor.tx.errors.underpriced}`,             `TX Receipt`, `${state.monitor.tx.errors.transactionReceipt}`]);

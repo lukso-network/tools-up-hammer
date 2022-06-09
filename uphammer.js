@@ -10,7 +10,7 @@ const actions = require('./actions');
 const config = require("./config.json");
 const utils = require("./utils");
 
-const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
+const {log, warn, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
 
 let {state} = require("./state");
 
@@ -172,7 +172,6 @@ class UPHammer {
                 if(Object.keys(state.up).length > 0) { 
                     this.transfer_actions[next](state);    
                 }
-                
             } catch(e) {
                 warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
@@ -202,21 +201,25 @@ class UPHammer {
      * If no TX is found for that hash, the nonce is added to the state.droppedNonces array if it doesn't already exist
      */
     checkPendingTx = async function () {
-        let txsToRemove = [];
-        for(let i=0; i<state.pendingTxs.length; i++) {
+        // let txsToRemove = [];
+        let hashes = Object.keys(state.pendingTxs);
+        for(let i=0; i<hashes.length; i++) {
+            let hash = hashes[i];
             // if we do this with promises, then the indexes get messed up when transactions are removed
             // from the array asynchronously
             // so using await unless a better solution can be found.
             // this runs in its own thread though, so *SHOULDN'T* affect the transfers
             try {
-                let tx = await this.web3.eth.getTransaction(state.pendingTxs[i].hash);
+                let tx = await this.web3.eth.getTransaction(hash);
                 if(!tx) {
                     // tx is dropped
-                    utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[i].nonce);
-                    txsToRemove.push(i);
+                    utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[hash].nonce);
+                    // txsToRemove.push(i);
+                    delete state.pendingTxs[hash];
                 } else if(tx.blockNumber) {
                     // tx is mined
-                    txsToRemove.push(i);
+                    // txsToRemove.push(i);
+                    delete state.pendingTxs[hash];
                 }
             } catch(e) {
                 console.log(e);
@@ -224,9 +227,17 @@ class UPHammer {
 
         }
         // remove the indices after the entire pendingTxs array has been gone through
-        for(let j=0; j<txsToRemove.length;j++) {
-            state.pendingTxs.splice(txsToRemove[j], 1);
-        }
+        // for(let j=0; j<txsToRemove.length;j++) {
+        //     log(`===== To Remove ${state.pendingTxs[j].nonce}`, QUIET);
+        //     state.pendingTxs.splice(txsToRemove[j], 1);
+        //     if(!state.pendingTxs[j] && state.pendingTxs.length > 0) {
+        //         console.log(state.pendingTxs[j]);
+        //     } else {
+        //         log(`===== IS not the same? ${state.pendingTxs[j].nonce}`, QUIET);
+        //     }
+            
+            
+        // }
     
     }
 

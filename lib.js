@@ -290,13 +290,13 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         })
         .on('transactionHash', function(hash){
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.pendingTxs.push({hash, nonce});
+            state.pendingTxs[hash] = nonce;
             state.monitor.tx.hash++;
             accountForNonce(state, nonce);
         })
         .on('receipt', function(receipt){
             log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
-            state[type].transferable = true;
+            state[type.toLowerCase()].transferable = true;
             state.monitor.tx.receipts.mints++;
             logTx(config.txTransactionLog, receipt.transactionHash, nonce);
             accountForNonce(state, nonce);
@@ -353,7 +353,7 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         })
         .on('transactionHash', function(hash){
             log(`Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.pendingTxs.push({nonce, hash});
+            state.pendingTxs[hash] = nonce;
             state.monitor.tx.hash++;
             accountForNonce(state, nonce);
         })
