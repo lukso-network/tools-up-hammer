@@ -22,6 +22,9 @@ function nextNonce(state) {
         } else {
             let next = state.incrementGasPrice.shift();
             nonce = next.nonce;
+            if(!next.gasPrice) {
+                console.log(next.gasPrice);
+            }
             gasPrice = parseInt(next.gasPrice) + parseInt(state.config.gasIncrement);
             gasPrice = gasPrice.toString();
         }
@@ -216,27 +219,30 @@ function monitorCycle(state) {
     let unaccountedFor = formatNonces(state.sentNonces);
     let droppedNonces = formatNonces(state.droppedNonces);
     let incrementGasPriceNonces = formatNonces(state.incrementGasPrice.map(tx => tx.nonce));
+    let pendingNonces = formatNonces(state.pendingTxs.map(tx=>tx.nonce).sort());
+    
     monitor(`************************************[*]`);
-    monitor([`Max Delay ${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`]);
-    monitor([`Tx Total ${realTx}`, `Cycles ${state.monitor.tx.loop}`, `Ratio ${txLoopRatio}%`]); 
-    monitor([`    Transfer ${state.monitor.tx.sent}`, `Attempted ${state.monitor.tx.attemptedTx}`]);
-    monitor([`    Mint     ${state.monitor.tx.mint}`,  `Attempted ${state.monitor.tx.attemptedMint}` ]);
-    monitor([`Receipts ${totalReceipts}`, `Pending ${state.pendingTxs.length}`, `Tx Hashes ${state.monitor.tx.hash}`]);
-    monitor([`    Transfers ${state.monitor.tx.receipts.transfers}`, `Mints ${state.monitor.tx.receipts.mints}`, `Reverts ${state.monitor.tx.receipts.reverts}`])
+    monitor([`Max Delay`, `${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`]);
+    monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`]); 
+    monitor([`Transfer`, `${state.monitor.tx.sent}`, `Attempted`, `${state.monitor.tx.attemptedTx}`]);
+    monitor([`    Mint`, `${state.monitor.tx.mint}`,  `Attempted`, `${state.monitor.tx.attemptedMint}` ]);
+    monitor([`Receipts`, `${totalReceipts}`, `Pending`, `${state.pendingTxs.length}`, `Tx Hashes`, `${state.monitor.tx.hash}`]);
+    monitor([`    Transfers`, `${state.monitor.tx.receipts.transfers}`, `Mints`, `${state.monitor.tx.receipts.mints}`, `Reverts ${state.monitor.tx.receipts.reverts}`])
     monitor(`Errors ${totalErrors}`);
-    monitor([`    Underpriced ${state.monitor.tx.errors.underpriced}`,             `Transaction Receipt ${state.monitor.tx.errors.transactionReceipt}`]);
-    monitor([`    Invalid JSON Response ${state.monitor.tx.errors.invalidJSON}`,   `Nonce too low ${state.monitor.tx.errors.nonceTooLow}`]);
-    monitor([`    Tx Not Mined ${state.monitor.tx.errors.txNotMined}`,             `Misc    ${state.monitor.tx.errors.misc}`]);
+    monitor([`    Underpriced`, `${state.monitor.tx.errors.underpriced}`,             `TX Receipt`, `${state.monitor.tx.errors.transactionReceipt}`]);
+    monitor([`    Invalid JSON`, `${state.monitor.tx.errors.invalidJSON}`,   `Nonce too low`, `${state.monitor.tx.errors.nonceTooLow}`]);
+    monitor([`    Tx Not Mined`, `${state.monitor.tx.errors.txNotMined}`,             `Misc`, `${state.monitor.tx.errors.misc}`]);
         
     monitor(`Network Failures`);
-    monitor([`   Socket Hang up ${state.monitor.networkFailures.socketHangUp}`,    `Disconnected preTLS ${state.monitor.networkFailures.socketDisconnectedTLS}`])
-    monitor([`   ECONNRESET ${state.monitor.networkFailures.econnreset}`,          `ECONNREFUSED ${state.monitor.networkFailures.econnrefused}`])
-    monitor([`   ETIMEDOUT ${state.monitor.networkFailures.timedout}`,             `ENOTFOUND ${state.monitor.networkFailures.enotfound}`])           
+    monitor([`   Socket Hang up`, `${state.monitor.networkFailures.socketHangUp}`,    `Disconnect preTLS`, `${state.monitor.networkFailures.socketDisconnectedTLS}`])
+    monitor([`   ECONNRESET`, `${state.monitor.networkFailures.econnreset}`,          `ECONNREFUSED`, `${state.monitor.networkFailures.econnrefused}`])
+    monitor([`   ETIMEDOUT`, `${state.monitor.networkFailures.timedout}`,             `ENOTFOUND`, `${state.monitor.networkFailures.enotfound}`])           
 
     monitor(`Nonces: Current ${state.nonce}`);
-    monitor([`   Dropped ${state.droppedNonces.length }`,                  `[${droppedNonces}...]`])
-    monitor([`   Incrementing Gas Price ${state.incrementGasPrice.length}`, `[${incrementGasPriceNonces}...]`]);
-    monitor([`   Unaccounted ${state.sentNonces.length}`,                  `[${unaccountedFor}...] `]);
+    monitor([`   Dropped`, `${state.droppedNonces.length }`,                  `[${droppedNonces}...]`])
+    monitor([`   Increment Gas Price`, `${state.incrementGasPrice.length}`, `[${incrementGasPriceNonces}...]`]);
+    monitor([`   Unaccounted`, `${state.sentNonces.length}`,                  `[${unaccountedFor}...] `]);
+    monitor([`   Pending`, `${pendingNonces.length}`, `[${pendingNonces}...]`]);
     monitor(`************************************[*]`);
 
     state.monitor = resetMonitor();
