@@ -219,7 +219,8 @@ function monitorCycle(state) {
     let unaccountedFor = formatNonces(state.sentNonces);
     let droppedNonces = formatNonces(state.droppedNonces);
     let incrementGasPriceNonces = formatNonces(state.incrementGasPrice.map(tx => tx.nonce));
-    let pendingNonces = formatNonces(state.pendingTxs.map(tx=>tx.nonce).sort());
+    let pendingNonces = state.pendingTxs.map(tx=>tx.nonce).sort();
+    let pendingNoncesFormatted = formatNonces(pendingNonces);
     
     monitor(`************************************[*]`);
     monitor([`Max Delay`, `${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`]);
@@ -242,7 +243,7 @@ function monitorCycle(state) {
     monitor([`   Dropped`, `${state.droppedNonces.length }`,                  `[${droppedNonces}...]`])
     monitor([`   Increment Gas Price`, `${state.incrementGasPrice.length}`, `[${incrementGasPriceNonces}...]`]);
     monitor([`   Unaccounted`, `${state.sentNonces.length}`,                  `[${unaccountedFor}...] `]);
-    monitor([`   Pending`, `${pendingNonces.length}`, `[${pendingNonces}...]`]);
+    monitor([`   Pending`, `${pendingNonces.length}`, `[${pendingNoncesFormatted}...]`]);
     monitor(`************************************[*]`);
 
     state.monitor = resetMonitor();

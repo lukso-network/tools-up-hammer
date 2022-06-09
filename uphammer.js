@@ -256,11 +256,6 @@ class UPHammer {
         log(`Balance: ${balance}`, QUIET);
         if (balance === '0') {
             warn(`[!] Go get some gas for ${this.config.wallets[wallet].address}`, QUIET);
-            // if(provider === L14) {
-            //     warn('http://faucet.l14.lukso.network/', INFO);    
-            // } else {
-            //     warn('http://faucet.11111111.l16.lukso.network/', INFO);
-            // } 
             return false;
         }
         return true;
