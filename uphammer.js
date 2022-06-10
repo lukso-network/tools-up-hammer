@@ -203,24 +203,30 @@ class UPHammer {
     checkPendingTx = async function () {
         let hashes = Object.keys(state.pendingTxs);
         for(let i=0; i<hashes.length; i++) {
+            
             let hash = hashes[i];
-            // if we do this with promises, then the indexes get messed up when transactions are removed
-            // from the array asynchronously
-            // so using await unless a better solution can be found.
-            // this runs in its own thread though, so *SHOULDN'T* affect the transfers
-            try {
-                let tx = await this.web3.eth.getTransaction(hash);
-                if(!tx) {
-                    // tx is dropped
-                    utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[hash]);
-                    delete state.pendingTxs[hash];
-                } else if(tx.blockNumber) {
-                    // tx is mined
-                    delete state.pendingTxs[hash];
-                }
-            } catch(e) {
-                console.log(e);
+            // if the chain is already ahead of this nonce, we just clear it out
+            if(state.pendingTxs[hash] < state.nonceFromChain) {
+                delete state.pendingTxs[hash];
+            } else {
+            
+                this.web3.eth.getTransaction(hash)
+                .then((tx) => {
+                    if(!tx) {
+                        // tx is dropped
+                        utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[hash]);
+                        delete state.pendingTxs[hash];
+                    } else if(tx.blockNumber) {
+                        // tx is mined
+                        delete state.pendingTxs[hash];
+                    }
+                })
+                .catch((e) => {
+                    utils.errorHandler(state, e);
+                    console.log(e);
+                })
             }
+            
 
         }
     
