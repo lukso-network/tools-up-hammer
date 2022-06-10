@@ -6,46 +6,40 @@ const {log, warn, monitor, DEBUG, VERBOSE, INFO, MONITOR, QUIET} = require('./lo
 function nextNonce(state) {
     let nonce;
     let gasPrice = undefined;
-    if(state.droppedNonces.length > 0 || state.incrementGasPrice.length > 0) {
-        let droppedNonce = state.droppedNonces[0];
-        let replacementNonce = state.incrementGasPrice[0] ? state.incrementGasPrice[0].nonce : droppedNonce + 1;
-        if(state.incrementGasPrice[0] === undefined) {
-            log(`Dropped nonces ${state.droppedNonces.length}`, VERBOSE);
-            
-        }
-        // we WERE preferring the lesser of the two nonces
-        // but this could potentially cause the increment gas price infinite loop bc that loop only happens when the 
-        // dropped nonces queue begins after the increment gasPrice queue.
-        // ATM we have reverted back because the bug under investigation was likely elsewhere.
-        if(droppedNonce < replacementNonce || replacementNonce === undefined) {
-        // if(droppedNonce) {
-            nonce = state.droppedNonces.shift();
-            // check if the nonce we pulled from the queue is less than the nonce the chain says we have
-            // if its less, then there is no point in sending that nonce, as will cause more replacement errors
-            // this means we have still removed a nonce from the queue, but discarded if new information is available
-            if(nonce < state.nonceFromChain) {
-                nonce = state.nonce++;
-            }
-        } else {
-            let next = state.incrementGasPrice.shift();
-            nonce = next.nonce;
-            if(!next.gasPrice) {
-                console.log(next.gasPrice);
-            }
-            gasPrice = parseInt(next.gasPrice) + parseInt(state.config.gasIncrement);
-            gasPrice = gasPrice.toString();
+    // we prefer droppedNonces over incrementGasPrice because the droppedNonce might be a lost nonceFromChain
+    if(state.droppedNonces.length > 0) {
+        nonce = state.droppedNonces.shift();
+        // check if the nonce we pulled from the queue is less than the nonce the chain says we have
+        // if its less, then there is no point in sending that nonce, as will cause more replacement errors
+        // this means we have still removed a nonce from the queue, but discarded if new information is available
+        if(nonce < state.nonceFromChain) {
+            nonce = state.nonce++;
         }
         state.monitor.droppedNonces = { 
             length: state.droppedNonces.amount,
-            // lowest: state.droppedNonces[0]
         };
+    } else if(state.incrementGasPrice.length > 0) {
+        // let droppedNonce = state.droppedNonces[0];
+        // let replacementNonce = state.incrementGasPrice[0] ? state.incrementGasPrice[0].nonce : droppedNonce + 1;
+        // if(state.incrementGasPrice[0] === undefined) {
+        //     log(`Dropped nonces ${state.droppedNonces.length}`, VERBOSE);
+            
+        // }
+        // we prefer the lesser of the two nonces
+        // if(droppedNonce < replacementNonce || replacementNonce === undefined) {
+        // if(droppedNonce) {
+            
+        let next = state.incrementGasPrice.shift();
+        nonce = next.nonce;
+        if(!next.gasPrice) {
+            console.log(next.gasPrice);
+        }
+        gasPrice = parseInt(next.gasPrice) + parseInt(state.config.gasIncrement);
+        gasPrice = gasPrice.toString();
+        
         state.monitor.incrementGasPrice = {
             amount: state.incrementGasPrice.length,
-            // lowest: state.incrementGasPrice[0] ? state.incrementGasPrice[0].nonce : ''
         };
-
-        
-
     } else {
         nonce = state.nonce++;
     }
