@@ -20,6 +20,12 @@ function nextNonce(state) {
         if(droppedNonce < replacementNonce || replacementNonce === undefined) {
         // if(droppedNonce) {
             nonce = state.droppedNonces.shift();
+            // check if the nonce we pulled from the queue is less than the nonce the chain says we have
+            // if its less, then there is no point in sending that nonce, as will cause more replacement errors
+            // this means we have still removed a nonce from the queue, but discarded if new information is available
+            if(nonce < state.nonceFromChain) {
+                nonce = state.nonce++;
+            }
         } else {
             let next = state.incrementGasPrice.shift();
             nonce = next.nonce;
@@ -31,12 +37,15 @@ function nextNonce(state) {
         }
         state.monitor.droppedNonces = { 
             length: state.droppedNonces.amount,
-            lowest: state.droppedNonces[0]
+            // lowest: state.droppedNonces[0]
         };
         state.monitor.incrementGasPrice = {
             amount: state.incrementGasPrice.length,
-            lowest: state.incrementGasPrice[0] ? state.incrementGasPrice[0].nonce : ''
+            // lowest: state.incrementGasPrice[0] ? state.incrementGasPrice[0].nonce : ''
         };
+
+        
+
     } else {
         nonce = state.nonce++;
     }
@@ -240,7 +249,7 @@ function monitorCycle(state) {
     monitor([`   ECONNRESET`, `${state.monitor.networkFailures.econnreset}`,          `ECONNREFUSED`, `${state.monitor.networkFailures.econnrefused}`])
     monitor([`   ETIMEDOUT`, `${state.monitor.networkFailures.timedout}`,             `ENOTFOUND`, `${state.monitor.networkFailures.enotfound}`])           
 
-    monitor(`Nonces: Current ${state.nonce}`);
+    monitor([`Nonces:`, `Current`, `${state.nonce}`, `From Chain `, `${state.nonceFromChain}`, `Divergence `, `${state.nonce - state.nonceFromChain}`]);
     monitor([`   Dropped`, `${state.droppedNonces.length }`,                  `[${droppedNonces}...]`])
     monitor([`   Increment Gas Price`, `${state.incrementGasPrice.length}`, `[${incrementGasPriceNonces}...]`]);
     monitor([`   Unaccounted`, `${state.sentNonces.length}`,                  `[${unaccountedFor}...] `]);

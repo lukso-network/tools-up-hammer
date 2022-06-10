@@ -167,7 +167,7 @@ async function attemptTransferLSP7(state, tx_amt_type) {
     let {web3, EOA, up, lsp7} = state;
     try {
         state.monitor.tx.attemptedTx++;
-        // if(lsp7.transferable) {
+        if(lsp7.transferable) {
             let amount;
             let lsp7_asset;
 
@@ -213,9 +213,9 @@ async function attemptTransferLSP7(state, tx_amt_type) {
                 // console.log(e);
                 errorHandler(state, e);
             });     
-        // } else {
-        //     warn('No LSP7 to Transfer', DEBUG);
-        // }
+        } else {
+            warn('No LSP7 to Transfer', DEBUG);
+        }
     } catch(e) {
         warn("ERROR when transfering LSP7", INFO);
         warn(e, INFO);
@@ -230,7 +230,7 @@ async function loop_transferLSP8(state) {
     let {web3, EOA, up, lsp8} = state;
     try {
         state.monitor.tx.attemptedTx++;
-        // if(lsp8.transferable) {
+        if(lsp8.transferable) {
             let totalSupply = "0";
             let lsp8_contract, lsp8_address;
             let tokenId, tokenIdBytes;
@@ -281,9 +281,9 @@ async function loop_transferLSP8(state) {
             
             transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state, 'lsp8');
         
-        // } else {
-        //     warn('[!] No LSP8 to transfer', DEBUG);
-        // }
+        } else {
+            warn('[!] No LSP8 to transfer', DEBUG);
+        }
     } catch(e) {
         warn("ERROR when transferring LSP8", INFO);
         // console.log(e);

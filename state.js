@@ -11,6 +11,7 @@ let state = {
         addresses: {}
     },
     nonce: null,
+    nonceFromChain: null,
     droppedNonces: [],
     incrementGasPrice: [],
     pendingTxs: {},

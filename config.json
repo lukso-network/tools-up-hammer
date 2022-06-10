@@ -20,7 +20,7 @@
     "deploymentDelay": 1000,
     "nonceCheckDelay": 10000,
     "monitorDelay": 5000,
-    "pendingNonceThreshold": 5, 
+    "nonceDivergenceLimit": 500, 
     "dev_loop" : [
         "loop_deployLSP7",
         "loop_deployLSP7",

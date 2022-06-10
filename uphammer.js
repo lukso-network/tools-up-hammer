@@ -10,7 +10,7 @@ const actions = require('./actions');
 const config = require("./config.json");
 const utils = require("./utils");
 
-const {log, warn, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
+const {log, warn, DEBUG, VERBOSE, INFO, MONITOR, QUIET} = require('./logging');
 
 let {state} = require("./state");
 
@@ -201,7 +201,6 @@ class UPHammer {
      * If no TX is found for that hash, the nonce is added to the state.droppedNonces array if it doesn't already exist
      */
     checkPendingTx = async function () {
-        // let txsToRemove = [];
         let hashes = Object.keys(state.pendingTxs);
         for(let i=0; i<hashes.length; i++) {
             let hash = hashes[i];
@@ -214,11 +213,9 @@ class UPHammer {
                 if(!tx) {
                     // tx is dropped
                     utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[hash]);
-                    // txsToRemove.push(i);
                     delete state.pendingTxs[hash];
                 } else if(tx.blockNumber) {
                     // tx is mined
-                    // txsToRemove.push(i);
                     delete state.pendingTxs[hash];
                 }
             } catch(e) {
@@ -226,18 +223,6 @@ class UPHammer {
             }
 
         }
-        // remove the indices after the entire pendingTxs array has been gone through
-        // for(let j=0; j<txsToRemove.length;j++) {
-        //     log(`===== To Remove ${state.pendingTxs[j].nonce}`, QUIET);
-        //     state.pendingTxs.splice(txsToRemove[j], 1);
-        //     if(!state.pendingTxs[j] && state.pendingTxs.length > 0) {
-        //         console.log(state.pendingTxs[j]);
-        //     } else {
-        //         log(`===== IS not the same? ${state.pendingTxs[j].nonce}`, QUIET);
-        //     }
-            
-            
-        // }
     
     }
 
@@ -247,6 +232,29 @@ class UPHammer {
     nonceCheck = async function () {
     
         while(true) {
+            // we want to check on what the chain thinks our nonce is
+            // if state.nonce diverges too far from what the chain says our nonce is
+            // it is possible that a nonce got lost and was not recovered by our checkPendingTx loop
+            // the value of state.config.nonceDivergenceLimit might require some thought. 
+            // If its too low we will introduce `replacement errors`. If its too high, the script might get
+            // stuck until the nonce is added
+            this.web3.eth.getTransactionCount(this.config.wallets.transfer.address)
+            .then((nonceFromChain) => {
+                state.nonceFromChain = nonceFromChain;
+                let threshold = state.config.nonceDivergenceLimit;
+                // state.nonce is likely higher than nonceFromChain
+                // if it is not, then we are likely "behind" and in a recovering state
+                let divergence = state.nonce - nonceFromChain; 
+                
+                if(divergence > threshold) {
+                    utils.addNonceToDroppedNoncesIfNotPresent(state, nonceFromChain);
+                }
+            })
+            .catch((e) => {
+                console.log(e);
+                utils.errorHandler(state,e);
+            })
+            
             // checkPendingTx needs to complete before running a second time
             // otherwise the next run will have smaller indices than the first
             await this.checkPendingTx();
@@ -303,7 +311,9 @@ class UPHammer {
         }
         
         state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
-        log(`Transfer Wallet Nonce is ${state.nonce}`, INFO);
+        let totalPending = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
+        log(`Transfer Wallet Nonce is ${state.nonce}`, MONITOR);
+        log(`Total Pending is ${totalPending}`, MONITOR);
         await this.init(this.config.initialUPs);
         // console.log(state);
         
