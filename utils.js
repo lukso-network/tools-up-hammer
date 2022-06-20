@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const fs = require('fs');
+const axios = require('axios');
 
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, MONITOR, QUIET} = require('./logging');
 
@@ -207,12 +208,33 @@ function resetMonitor() {
 
 function formatNonces(nonces) {
     let output = "";
-    let max = 5;
+    let max = 3;
     let loopMax = nonces.length > max ? max : nonces.length;
     for(let i=0; i<loopMax; i++) {
         output += `${nonces[i]}, `;
     }
     return output;
+}
+
+async function fund(state) {
+    let address = state.config.wallets.transfer.address;
+    axios
+        .post(state.config.faucet, {receiver: address})
+        .then(res => {
+        //   console.log(`statusCode: ${res.status}`);
+        // //   console.log(res.data);
+        //   let data = res.data;
+        //   if( data.error) {
+        //       console.log(`[!] ${address} ${data.error.message}`);
+        //     //   failed.push(address);
+        //   } else if(data.success) {
+        //       console.log(`[+] ${address} ${data.success.message}`);
+              
+        //   }
+        })
+        .catch(error => {
+          console.error(error);
+        });
 }
 
 function monitorCycle(state) {
@@ -226,8 +248,8 @@ function monitorCycle(state) {
     let pendingNonces = Object.values(state.pendingTxs).sort();
     let pendingNoncesFormatted = formatNonces(pendingNonces);
     
-    monitor(`************************************[*]`);
-    monitor([`Max Delay`, `${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`]);
+    monitor(`************************************[*]************************************[*]`);
+    monitor([`Max Delay ${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`, `Tx Balance ${state.balance}`]);
     monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`]); 
     monitor([`Transfer`, `${state.monitor.tx.sent}`, `Attempted`, `${state.monitor.tx.attemptedTx}`]);
     monitor([`    Mint`, `${state.monitor.tx.mint}`,  `Attempted`, `${state.monitor.tx.attemptedMint}` ]);
@@ -248,7 +270,7 @@ function monitorCycle(state) {
     monitor([`   Increment Gas Price`, `${state.incrementGasPrice.length}`, `[${incrementGasPriceNonces}...]`]);
     monitor([`   Unaccounted`, `${state.sentNonces.length}`,                  `[${unaccountedFor}...] `]);
     monitor([`   Pending`, `${pendingNonces.length}`, `[${pendingNoncesFormatted}...]`]);
-    monitor(`************************************[*]`);
+    monitor(`************************************[*]************************************[*]`);
 
     state.monitor = resetMonitor();
 }
@@ -333,5 +355,6 @@ module.exports = {
     errorHandler,
     savePresets,
     accountForNonce,
-    storeSentNonce
+    storeSentNonce,
+    fund
 }

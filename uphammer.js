@@ -214,6 +214,7 @@ class UPHammer {
                     utils.errorHandler(state, e);
                     // console.log(e);
                 })
+
             }
             
 
@@ -284,7 +285,34 @@ class UPHammer {
             utils.monitorCycle(state);
         }
     }
+
+
+
+    updateBalance = async function() {
+        while(true) {
+            try {
+                let balance = await state.web3.eth.getBalance(state.config.wallets.transfer.address);
+                state.balance = balance;
+            } catch(e) {
+                utils.errorHandler(state, e);
+            }
+            await delay(state.config.balanceUpdateDelay);
+        }
+    }
+    fundWallet = async function() {
+        while(true) {
+            utils.fund(state);
+            let minute = 1000 * 60;
+            let timeToWait = state.config.faucetDelayMinutes * minute;
+            await delay(timeToWait);
+        }
+    }
     
+    balanceAndFundLoop = async function() {
+        this.updateBalance();
+        this.fundWallet();
+
+    }
     /**
      * Begins the chain hammering
      * Before beginning the loops, it 
@@ -304,7 +332,7 @@ class UPHammer {
         if(!deploy_balance || !transfer_balance) {
             process.exit();
         }
-        
+        state.balance = transfer_balance;
         state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
         let totalPending = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
         log(`Transfer Wallet Nonce is ${state.nonce}`, MONITOR);
@@ -313,6 +341,7 @@ class UPHammer {
         // console.log(state);
         
         if(!state.config.deployOnly) {
+            this.balanceAndFundLoop();
             this.monitor();
             this.nonceCheck();
             this.runTransfers();    
