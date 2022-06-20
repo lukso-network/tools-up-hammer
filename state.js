@@ -21,7 +21,6 @@ let state = {
     DEPLOY_PROXY: null,
     EOA: {},
     config: null,
-    deploying: false,
     backoff: 0,
     monitor: resetMonitor()
 }

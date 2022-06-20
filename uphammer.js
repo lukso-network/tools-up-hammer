@@ -132,19 +132,8 @@ class UPHammer {
         }
         // run custom defined dev_loop
         for(const action of this.config.dev_loop) {
-            // deployReactive set to true complicates the loop significantly.
-            // it really should be removed.
-            // if we deployReactively, we need to wait until deployment has finished before
-            // we can deploy again, otherwise we'll have nonce issues
-            if(this.config.deployReactive) {
-                while(state.deploying) {
-                    await delay(this.config.deploymentDelay);
-                }
-            }
-
-            state.deploying = true;
+            await delay(this.config.deploymentDelay);
             await actions[action](state);
-            
         }
         // the main deploy loop. Deploys up to the limits set in the config
         while(this.continueDeployments()) {
@@ -223,7 +212,7 @@ class UPHammer {
                 })
                 .catch((e) => {
                     utils.errorHandler(state, e);
-                    console.log(e);
+                    // console.log(e);
                 })
             }
             

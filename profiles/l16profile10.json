@@ -17,7 +17,6 @@
     "monitorDelay": 5000,
     "logLevel": 3,
     "deployProxy": false,
-    "deployReactive": false,
     "savePresets": true,
     "deployOnly": false,
     "presetsFile": "./presets/presets10.json",

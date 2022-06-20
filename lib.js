@@ -81,7 +81,6 @@ async function deploy(lspFactory, config) {
             {
                 controllerAddresses: controller_addresses, // Address which will controll the UP
                 lsp3Profile: lsp3Profile,
-                
             },
             {
                 ERC725Account: {
@@ -92,19 +91,10 @@ async function deploy(lspFactory, config) {
                 },
                 KeyManager: {
                     deployProxy: config.deployProxy, 
-                },
-                // deployReactive: true
+                }
             }).catch((e) =>{
                 console.log(e);
             })
-            // .subscribe({
-            //     next: (deploymentEvent) => {
-            //       console.log(deploymentEvent);
-            //     },
-            //     complete: () => {
-            //       console.log('Digital Asset deployment completed');
-            //     },
-            //   });
     
         return up;
     } catch(e) {
@@ -124,40 +114,21 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
             controllerAddress: owner_address, // Account which will own the Token Contract
         },
         {
-            deployReactive: state.config.deployReactive,
             deployProxy: state.config.deployProxy
         }).catch((e) => {
             console.log(e);
         })
 
-        if(state.config.deployReactive) {
-            lsp8_asset.subscribe({
-                next: (deploymentEvent) => {
-                  console.log(deploymentEvent);
-    
-                },
-                complete: () => {
-                    state.deploying = false;
-                    console.log('Digital Asset deployment completed');
-                    const lsp8 = new web3.eth.Contract(
-                        LSP8IdentifiableDigitalAsset.abi,
-                        lsp8_asset.LSP8IdentifiableDigitalAsset.address,
-                        {
-                            from: EOA.deploy.address
-                        }
-                    );
-                },
-              });
-        } else {
-            const lsp8 = new web3.eth.Contract(
-                LSP8IdentifiableDigitalAsset.abi,
-                lsp8_asset.LSP8IdentifiableDigitalAsset.address,
-                {
-                    from: EOA.deploy.address
-                }
-            );
-            return lsp8;
-        }
+        
+        const lsp8 = new web3.eth.Contract(
+            LSP8IdentifiableDigitalAsset.abi,
+            lsp8_asset.LSP8IdentifiableDigitalAsset.address,
+            {
+                from: EOA.deploy.address
+            }
+        );
+        return lsp8;
+        
         
     
         
@@ -192,8 +163,6 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
                 from: EOA.deploy.address
             }
         );
-
-        state.deploying = false;
 
         return lsp7;
     } catch(e) {

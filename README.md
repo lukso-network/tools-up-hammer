@@ -128,8 +128,6 @@ const QUIET = 4;
 
 **deployOnly**  (boolean) if set to true, the script will only deploy UPs and LSPs. This is only useful with `savePresets` set to true, and an existing presets file in the config. Use this to fill up a profile with UPs and LSPs in preparation for hammering.
 
-**deployReactive** (boolean) set this to false. This entire feature needs to be reworked or removed
-
 **defaultGasPrice** (string|number??) defaults to "1000000000"
 
 **gasIncrement** (number) defaults to 1
