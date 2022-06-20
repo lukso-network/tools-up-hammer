@@ -249,7 +249,7 @@ function monitorCycle(state) {
     let pendingNonces = Object.values(state.pendingTxs).sort();
     let pendingNoncesFormatted = formatNonces(pendingNonces);
     let memoryUsage = process.memoryUsage();
-    let rss = memoryUsage.rss / 1024 / 1024 * 100
+    let rss = (memoryUsage.rss / 1024 / 1024 * 100).toFixed(1);
     let heapTotal = (memoryUsage.heapTotal / 1024 / 1024 * 100).toFixed(1);
     let heapUsed = (memoryUsage.heapUsed / 1024 / 1024 * 100).toFixed(1);
     let external = (memoryUsage.external / 1024 / 1024 * 100).toFixed(1);
