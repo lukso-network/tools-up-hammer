@@ -177,6 +177,7 @@ function resetMonitor() {
         tx: {
             loop: 0,
             sent: 0,
+            checkPending: 0,
             receipts: {
                 transfers: 0,
                 mints: 0,
@@ -250,7 +251,7 @@ function monitorCycle(state) {
     
     monitor(`************************************[*]************************************[*]`);
     monitor([`Max Delay ${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`, `Tx Balance ${state.balance}`]);
-    monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`]); 
+    monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`, `Chk Pending `, `${state.monitor.tx.checkPending}`]); 
     monitor([`Transfer`, `${state.monitor.tx.sent}`, `Attempted`, `${state.monitor.tx.attemptedTx}`]);
     monitor([`    Mint`, `${state.monitor.tx.mint}`,  `Attempted`, `${state.monitor.tx.attemptedMint}` ]);
     monitor([`Receipts`, `${totalReceipts}`, `Pending`, `${Object.keys(state.pendingTxs).length}`, `Tx Hashes`, `${state.monitor.tx.hash}`]);

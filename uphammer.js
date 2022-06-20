@@ -198,7 +198,7 @@ class UPHammer {
             if(state.pendingTxs[hash] < state.nonceFromChain) {
                 delete state.pendingTxs[hash];
             } else {
-            
+                state.monitor.tx.checkPending++;
                 this.web3.eth.getTransaction(hash)
                 .then((tx) => {
                     if(!tx) {
