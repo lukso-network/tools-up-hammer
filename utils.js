@@ -248,8 +248,15 @@ function monitorCycle(state) {
     let incrementGasPriceNonces = formatNonces(state.incrementGasPrice.map(tx => tx.nonce));
     let pendingNonces = Object.values(state.pendingTxs).sort();
     let pendingNoncesFormatted = formatNonces(pendingNonces);
+    let memoryUsage = process.memoryUsage();
+    let rss = memoryUsage.rss / 1024 / 1024 * 100
+    let heapTotal = (memoryUsage.heapTotal / 1024 / 1024 * 100).toFixed(1);
+    let heapUsed = (memoryUsage.heapUsed / 1024 / 1024 * 100).toFixed(1);
+    let external = (memoryUsage.external / 1024 / 1024 * 100).toFixed(1);
     
     monitor(`************************************[*]************************************[*]`);
+    monitor(`Memory`);
+    monitor([`RSS `,`${rss} mb `, `Heap Total `, `${heapTotal} mb `, `Used `, `${heapUsed} mb `, `Ext `, `${external} mb`])
     monitor([`Max Delay ${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`, `Tx Balance ${state.balance}`]);
     monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`, `Chk Pending `, `${state.monitor.tx.checkPending}`]); 
     monitor([`Transfer`, `${state.monitor.tx.sent}`, `Attempted`, `${state.monitor.tx.attemptedTx}`]);
