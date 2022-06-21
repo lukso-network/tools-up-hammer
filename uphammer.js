@@ -251,8 +251,6 @@ class UPHammer {
                 utils.errorHandler(state,e);
             })
             
-            // checkPendingTx needs to complete before running a second time
-            // otherwise the next run will have smaller indices than the first
             await this.checkPendingTx();
             await delay(config.nonceCheckDelay);
         }
