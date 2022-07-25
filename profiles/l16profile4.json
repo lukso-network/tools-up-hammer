@@ -1,6 +1,4 @@
 {
-    "provider": "https://rpc.11111111.l16.lukso.network/",
-    "chainId":11111111,
     "wallets": {
         "transfer": {
             "address": "0x909D5C7dab2B202ba279dC65a7432D1243d47430",
@@ -11,7 +9,7 @@
             "privateKey": "0x3f202a7f327cb291decda189cc8c38f5bfd0408d1bff89f0b4c1db303c1c5b2b"
         }
     },
-    "maxDelay": 0,
+    "maxDelay": 500,
     "deploymentDelay": 1000,
     "nonceCheckDelay": 10000,
     "monitorDelay": 5000,

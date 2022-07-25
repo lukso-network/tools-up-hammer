@@ -1,6 +1,4 @@
 {
-    "provider": "https://rpc.11111111.l16.lukso.network/",
-    "chainId":11111111,
     "wallets": {
         "transfer": {
             "address": "0x84A130Bb9404B973984A9b76050AEfD404F8e6Bf",
