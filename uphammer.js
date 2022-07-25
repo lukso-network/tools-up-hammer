@@ -73,6 +73,11 @@ class UPHammer {
         log(`ChainId is ${this.config.chainId}`, INFO);
         // web3 is used for transferring and minting, not deployments
         this.web3 = new Web3(this.provider, this.config.wallets.transfer.privateKey);
+        if(this.config.wsProvider) {
+            this.ws = new Web3(this.config.wsProvider, this.config.wallets.transfer.privateKey);
+            this.ws.eth.accounts.wallet.add(this.config.wallets.transfer.privateKey);
+        }
+        
         const EOA_transfer = this.web3.eth.accounts.wallet.add(this.config.wallets.transfer.privateKey);
         
         // deploy key is used for deployments
@@ -91,6 +96,7 @@ class UPHammer {
         
         state = {...state,
             web3: this.web3,
+            ws: this.ws,
             lspFactory: this.lspFactory,
             DEPLOY_PROXY,
             EOA: {
@@ -148,6 +154,23 @@ class UPHammer {
         }
         log('Finished deployments', INFO);
     }
+
+    doWebSocket = function() {
+        this.ws.eth.getBalance(this.config.wallet.transfer.address)
+                .then(balance => console.log(`[+] WS Balance ${balance}`))
+                .catch(e => errorHandler(state, e));
+    }
+
+    runWebSocket = async function() {
+        if(this.config.wsProvider) {
+            while(true) {
+                doWebSocket();
+                await delay(this.config.webSocketDelay);
+            }
+        }
+        
+    }
+
 
     /***
      * This is the main loop for transfers. It runs at an interval set in config as maxDelay

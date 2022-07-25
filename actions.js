@@ -6,7 +6,7 @@ const LSP8Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP8Mintable.
 const { deploy, deployLSP7, deployLSP8, transfer, randomKey, attemptMint } = require('./lib');
 
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
-const {savePresets, errorHandler} = require("./utils");
+const {savePresets, errorHandler, whichWeb3} = require("./utils");
 
 async function loop_deployUP(state) {
     if(Object.keys(state.up).length < state.config.deployLimits.up) {
@@ -164,7 +164,8 @@ async function loop_transferAllLSP7(state) {
 
 async function attemptTransferLSP7(state, tx_amt_type) {
     
-    let {web3, EOA, up, lsp7} = state;
+    let {EOA, up, lsp7} = state;
+    let web3 = whichWeb3(state);
     try {
         state.monitor.tx.attemptedTx++;
         if(lsp7.transferable) {
@@ -227,7 +228,8 @@ async function attemptTransferLSP7(state, tx_amt_type) {
 
 async function loop_transferLSP8(state) {
     log(`[+] Transfering LSP8`, DEBUG);
-    let {web3, EOA, up, lsp8} = state;
+    let {EOA, up, lsp8} = state;
+    let web3 = whichWeb3(state);
     try {
         state.monitor.tx.attemptedTx++;
         if(lsp8.transferable) {

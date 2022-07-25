@@ -348,6 +348,33 @@ function savePresets(state, presetsFile) {
 
 }
 
+function readFiles(dirname, onFileContent, onFinish) {
+    fs.readdir(dirname, function(err, filenames) {
+      if (err) {
+        onError(err);
+        return;
+      }
+      filenames.forEach(function(filename) {
+        
+        try {
+          let content = fs.readFileSync(dirname + filename, 'utf-8')  
+          let profile = JSON.parse(content);
+          onFileContent(profile);
+        } catch(e) {
+          console.log(`[!] Error opening ${diname + filename}`)
+        }
+      });
+      onFinish();
+    });
+  }
+
+function whichWeb3(state) {
+    if(crypto.randomInt(100) > 50) {
+        return state.web3;
+    } else {
+        return state.ws;
+    }
+}
 
 module.exports = {
     nextNonce,
@@ -364,5 +391,7 @@ module.exports = {
     savePresets,
     accountForNonce,
     storeSentNonce,
-    fund
+    fund,
+    readFiles,
+    whichWeb3
 }
