@@ -1,7 +1,8 @@
 {
-    "provider": "https://rpc.11111111.l16.lukso.network/",
-    "chainId":11111111,
-    "faucet": "https://faucet.11111111.l16.lukso.network/",
+    "provider": "https://rpc.1600.l16.lukso.network/",
+    "wsProvider": "wss://ws.rpc.1600.l16.lukso.network/",
+    "chainId": 1600,
+    "faucet": "https://faucet.1600.l16.lukso.network/",
     "wallets": {
         "transfer": {
             "address": "0x32072f29eb14Cb8E8B0daeBb9370D3C7B139a17f",
@@ -20,6 +21,7 @@
     "maxDelay": 0,
     "deploymentDelay": 1000,
     "nonceCheckDelay": 10000,
+    "webSocketDelay": 100,
     "monitorDelay": 5000,
     "faucetDelayMinutes": 30,
     "balanceUpdateDelay": 5000,
