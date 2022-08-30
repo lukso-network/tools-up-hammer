@@ -1,6 +1,5 @@
 {
     "provider": "https://rpc.1600.l16.lukso.network/",
-    "wsProvider": "wss://ws.rpc.1600.l16.lukso.network/",
     "chainId": 1600,
     "faucet": "https://faucet.1600.l16.lukso.network/",
     "wallets": {

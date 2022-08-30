@@ -369,6 +369,10 @@ function readFiles(dirname, onFileContent, onFinish) {
   }
 
 function whichWeb3(state) {
+    if (!state.config.wsProvider) {
+        return state.web3;
+    }
+    
     if(crypto.randomInt(100) > 50) {
         return state.web3;
     } else {
