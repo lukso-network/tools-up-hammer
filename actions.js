@@ -238,54 +238,44 @@ async function loop_transferLSP8(state) {
             let tokenId, tokenIdBytes;
             let owner;
             let keepSearching = true;
-            // as long as one lsp8 assets has a totalSupply >= transfer amount, this won't get stuck
-            // need to ensure that condition is always met
-            // additionally, if using presets, the LSP8 owner could be a UP that has not been loaded in yet
-            while(keepSearching) {
-                lsp8_address = randomKey(lsp8.addresses);
-                lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);
-                totalSupply = await lsp8_contract.methods.totalSupply().call();
-
-                // select a random token from the supply
+        
+            lsp8_address = randomKey(lsp8.addresses);
+            lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);
+            lsp8_contract.methods.totalSupply().call().then(totalSupply => {
+                // if there are no tokens we will send tokenId 1 and force a revert
                 if(totalSupply === "0") {
-                    continue;
+                    totalSupply = "1";
                 }
                 tokenId = parseInt(crypto.randomInt(parseInt(totalSupply))) + 1; // prevent id from being 0
                 tokenIdBytes = web3.utils.toHex(tokenId);
 
                 // find out who owns it
-                owner = await lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call();
-                // console.log(owner)
-                // super hacky way since the while loop was exiting even though both conditions weren't met
-                if(totalSupply !== "0" && up[owner] !== undefined) {
-                    keepSearching = false;
-                }
-                
-            }
-            
-            log(`[+] Sender ${owner} owns ${tokenIdBytes} token`, DEBUG);
+                lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call().then(owner => {
+                    log(`[+] Sender ${owner} owns ${tokenIdBytes} token`, DEBUG);
 
-            // select a random recipient
-            let recv_address = owner;
-            while(recv_address === owner)
-            {
-                // loop until we find an address that is not the sender
-                // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
-                // recv_address = Object.keys(up)[other_idx];
-                recv_address = randomKey(up);
-            }
-            log(`[+] Receiver will be ${recv_address}`, DEBUG);
-
-            // send
-            erc725 = new web3.eth.Contract(UniversalProfile.abi, owner);
-            km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
-            log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`, DEBUG);
-            
-            transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state, 'lsp8');
+                    // select a random recipient
+                    let recv_address = owner;
+                    while(recv_address === owner)
+                    {
+                        // loop until we find an address that is not the sender
+                        // let other_idx = crypto.randomBytes(1)[0] % Object.keys(up).length;
+                        // recv_address = Object.keys(up)[other_idx];
+                        recv_address = randomKey(up);
+                    }
+                    log(`[+] Receiver will be ${recv_address}`, DEBUG);
         
+                    // send
+                    erc725 = new web3.eth.Contract(UniversalProfile.abi, owner);
+                    km = new web3.eth.Contract(KeyManager.abi, up[owner].km._address);
+                    log(`[+] Transferring ${tokenIdBytes} of ${lsp8_contract._address} from ${owner} to ${recv_address}`, DEBUG);
+                    
+                    transfer(lsp8_contract, owner, recv_address, tokenIdBytes, {erc725, km, EOA}, state, 'lsp8');
+                
+                });  
+            })
         } else {
             warn('[!] No LSP8 to transfer', DEBUG);
-        }
+        }        
     } catch(e) {
         warn("ERROR when transferring LSP8", INFO);
         // console.log(e);
