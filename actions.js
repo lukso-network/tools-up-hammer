@@ -139,7 +139,7 @@ async function loop_deployLSP8(state) {
 }
 async function loop_mintLSP7(state) {
     if(Object.keys(state.lsp7.addresses).length > 0) {
-        await attemptMint('lsp7', LSP7Mintable.abi, state);
+        attemptMint('lsp7', LSP7Mintable.abi, state);
     } else {
        warn('No LSP7 to mint', VERBOSE);
     }
@@ -148,7 +148,7 @@ async function loop_mintLSP7(state) {
 async function loop_mintLSP8(state) {
     
     if(Object.keys(state.lsp8.addresses).length > 0) {
-        await attemptMint('lsp8', LSP8Mintable.abi, state);
+        attemptMint('lsp8', LSP8Mintable.abi, state);
     } else {
         warn('No LSP8 to Mint', VERBOSE);
     }
