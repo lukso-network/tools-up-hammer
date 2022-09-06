@@ -16,32 +16,37 @@ let {state} = require("./state");
 
 // we need to override _onHttpRequestError to get network failure information
 const XHR = require('xhr2-cookies').XMLHttpRequest
+
 XHR.prototype._onHttpRequestError = function (request, error) {
-  if (this._request !== request) {
-      return;
-  }
-  
-  let msg = error.toString();
-  if(msg.includes("ECONNRESET")) {
-    state.monitor.networkFailures.econnreset++
-  } else if(msg.includes("ECONNREFUSED")) {
-    state.monitor.networkFailures.econnrefused++
-  } else if(msg.includes("Client network socket disconnected before secure TLS connection was established")) {
-      state.monitor.networkFailures.socketDisconnectedTLS++;
-  } else if(msg.includes("socket hang up")) {
-      state.monitor.networkFailures.socketHangUp++;
-  } else if(msg.includes("ETIME")) {
-      state.monitor.networkFailures.timedout++;
-  } else if(msg.includes("ENOTFOUND")) {
-      state.monitor.networkFailures.enotfound++;
-  } else {
-    console.log(error);
-  }
-  this._setError();
-  request.abort();
-  this._setReadyState(XHR.DONE);
-  this._dispatchProgress('error');
-  this._dispatchProgress('loadend');
+    try {
+        if (this._request !== request) {
+            return;
+        }
+        
+        let msg = error.toString();
+        if(msg.includes("ECONNRESET")) {
+            state.monitor.networkFailures.econnreset++
+        } else if(msg.includes("ECONNREFUSED")) {
+            state.monitor.networkFailures.econnrefused++
+        } else if(msg.includes("Client network socket disconnected before secure TLS connection was established")) {
+            state.monitor.networkFailures.socketDisconnectedTLS++;
+        } else if(msg.includes("socket hang up")) {
+            state.monitor.networkFailures.socketHangUp++;
+        } else if(msg.includes("ETIME")) {
+            state.monitor.networkFailures.timedout++;
+        } else if(msg.includes("ENOTFOUND")) {
+            state.monitor.networkFailures.enotfound++;
+        } else {
+            console.log(error);
+        }
+        this._setError();
+        request.abort();
+        this._setReadyState(XHR.DONE);
+        this._dispatchProgress('error');
+        this._dispatchProgress('loadend');
+    } catch(e) {
+        errorHandler(state, e);
+    }
 };
 
 
@@ -274,7 +279,7 @@ class UPHammer {
                 utils.errorHandler(state,e);
             })
             
-            await this.checkPendingTx();
+            // await this.checkPendingTx();
             await delay(config.nonceCheckDelay);
         }
     }
