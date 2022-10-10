@@ -18,12 +18,5 @@
     "savePresets": true,
     "deployOnly": false,
     "presetsFile": "./presets/presets6.json",
-    "dev_loop" : [
-        "loop_deployLSP8",
-        "loop_mintLSP8",
-        "loop_mintLSP8",
-        "loop_mintLSP8",
-        "loop_mintLSP8"
-    ],
     "backoff": 15
 }

@@ -11,7 +11,7 @@
     },
     "maxDelay": 100,
     "deploymentDelay": 1000,
-    "nonceCheckDelay": 10000,
+    "nonceCheckDelay": 20000,
     "monitorDelay": 5000,
     "logLevel": 3,
     "deployOnly": false,

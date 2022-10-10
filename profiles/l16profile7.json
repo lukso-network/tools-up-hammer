@@ -17,7 +17,5 @@
     "savePresets": true,
     "deployOnly": false,
     "presetsFile": "./presets/presets7.json",
-    "dev_loop" : [
-    ],
     "backoff": 15
 }
