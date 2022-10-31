@@ -18,9 +18,7 @@ async function createProfile(i) {
         if (profile.locked) {
             return profile;
         }
-    } catch (e) {
-        console.log(e);
-    }
+    } catch (e) {}
     
 
     let deployAccount = web3.eth.accounts.create();
