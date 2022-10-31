@@ -5,11 +5,24 @@ const config = require("../config.json");
 
 const web3 = new Web3(config.provider);
 
-const profilesDir = "UPprofiles";
-const presetsDir = "UPpresets";
+const profilesDir = "profiles";
+const presetsDir = "presets";
 
 
 async function createProfile(i) {
+    try {
+        // if there is already a profile file, check if it has a `locked` property set
+        // if it is `locked`, then simply return that profile, do not create a new one
+        let profileData = await fs.readFileSync(`./${profilesDir}/profile${i}.json`);
+        let profile = JSON.parse(profileData);
+        if (profile.locked) {
+            return profile;
+        }
+    } catch (e) {
+        console.log(e);
+    }
+    
+
     let deployAccount = web3.eth.accounts.create();
     let transferAccount = web3.eth.accounts.create();
 
@@ -27,7 +40,7 @@ async function createProfile(i) {
         presetsFile: `./${presetsDir}/presets${i}.json`,
     }
 
-    configJS = JSON.stringify(config);
+    configJS = JSON.stringify(config, null, 4);
     await fs.writeFileSync(`./${profilesDir}/profile${i}.json`, configJS);
     return config;
 }
@@ -39,19 +52,23 @@ async function fundSingleAccount(funder, recipient, amount) {
      'to': recipient, 
      'value': amount,
      'gas': 30000,
-    // //  'maxFeePerGas': 1000000108,
      'nonce': nonce,
     };
    
     const signedTx = await web3.eth.accounts.signTransaction(transaction, funder.privateKey);
+    try {
+        await web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
+            if (!error) {
+                console.log(`TX ${hash}`);
+            } else {
+                console.log("Error", error)
+            }
+       });
+    } catch(e) {
+        console.log(`[!] Error ${e}`)
+        return recipient
+    }
     
-    await web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
-        if (!error) {
-            console.log(`TX ${hash}`);
-        } else {
-            console.log("Error", error)
-        }
-   });
 }
 
 async function fundPresets(funder, presets, amountToFund) {
@@ -71,7 +88,10 @@ async function fundPresets(funder, presets, amountToFund) {
 
     recipients = presets.flatMap((w) => [w.wallets.transfer.address, w.wallets.deploy.address])
     for(i in recipients) {
-        await fundSingleAccount (funder, recipients[i], amountPerRecipient);
+        let failed = await fundSingleAccount (funder, recipients[i], amountPerRecipient);
+        if (failed) {
+            recipients.push(failed);
+        }
     }
 }
 
@@ -91,7 +111,7 @@ async function main() {
 
     let funder = web3.eth.accounts.privateKeyToAccount(privateKey);
 
-    for(let i=0; i<numberOfAccounts; i++) {
+    for(let i=1; i<=numberOfAccounts; i++) {
         let preset = await createProfile(i);
         presets.push(preset);
     }

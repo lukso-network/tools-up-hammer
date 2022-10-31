@@ -16,5 +16,6 @@
     "deployOnly": false,
     "savePresets": true,
     "presetsFile": "./presets/presets1.json",
-    "logLevel": 3
+    "logLevel": 3,
+    "locked": true
 }

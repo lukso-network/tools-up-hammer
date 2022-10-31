@@ -19,5 +19,6 @@
     "presetsFile": "./presets/presets2.json",
     "dev_loop" : [
     ],
-    "backoff": 15
+    "backoff": 15,
+    "locked": true
 }

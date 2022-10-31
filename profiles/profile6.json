@@ -18,5 +18,6 @@
     "savePresets": true,
     "deployOnly": false,
     "presetsFile": "./presets/presets6.json",
-    "backoff": 15
+    "backoff": 15,
+    "locked": true
 }

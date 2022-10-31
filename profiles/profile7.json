@@ -17,5 +17,6 @@
     "savePresets": true,
     "deployOnly": false,
     "presetsFile": "./presets/presets7.json",
-    "backoff": 15
+    "backoff": 15,
+    "locked": true
 }
