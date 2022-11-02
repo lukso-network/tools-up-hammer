@@ -16,6 +16,7 @@ async function createProfile(i) {
         let profileData = await fs.readFileSync(`./${profilesDir}/profile${i}.json`);
         let profile = JSON.parse(profileData);
         if (profile.locked) {
+            console.log(`[+] Preserving profile ${i}`)
             return profile;
         }
     } catch (e) {}
@@ -40,6 +41,7 @@ async function createProfile(i) {
 
     configJS = JSON.stringify(config, null, 4);
     await fs.writeFileSync(`./${profilesDir}/profile${i}.json`, configJS);
+    console.log(`[+] Saving new profile ${i}`);
     return config;
 }
 
@@ -57,9 +59,9 @@ async function fundSingleAccount(funder, recipient, amount) {
     try {
         await web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
             if (!error) {
-                console.log(`TX ${hash}`);
+                console.log(`[+] Funded ${recipient} ${amount}`);
             } else {
-                console.log("Error", error)
+                console.log("[!] Error", error)
             }
        });
     } catch(e) {
@@ -74,7 +76,7 @@ async function fundPresets(funder, presets, amountToFund) {
         // will fund using the entire balance
         amountToFund = await web3.eth.getBalance(funder.address);
         if (amountToFund === "0" ) {
-            console.log(`Funding account balance is 0`);
+            console.log(`[!] Funding account balance is 0`);
             process.exit();
         }
     }
@@ -82,7 +84,7 @@ async function fundPresets(funder, presets, amountToFund) {
     // then add an extra slot for account for gas
     let numRecipients = (presets.length * 2) + 1
     let amountPerRecipient = Math.floor(amountToFund / numRecipients);
-    console.log(`Distributing ${amountPerRecipient} amongst ${numRecipients}`);
+    console.log(`[+] Distributing ${amountPerRecipient} amongst ${numRecipients-1}`);
 
     recipients = presets.flatMap((w) => [w.wallets.transfer.address, w.wallets.deploy.address])
     for(i in recipients) {
@@ -105,16 +107,16 @@ async function main() {
     let numberOfAccounts = parseInt(args[1]);
     let amountToFund = args[2] ? args[2] : undefined;
 
-    let presets = [];
+    let profiles = [];
 
     let funder = web3.eth.accounts.privateKeyToAccount(privateKey);
 
     for(let i=1; i<=numberOfAccounts; i++) {
-        let preset = await createProfile(i);
-        presets.push(preset);
+        let profile = await createProfile(i);
+        profiles.push(profile);
     }
 
-    await fundPresets(funder, presets, amountToFund);
+    await fundPresets(funder, profiles, amountToFund);
 }
 
 main();

@@ -278,8 +278,10 @@ class UPHammer {
                 console.log(e);
                 utils.errorHandler(state,e);
             })
+            if(config.checkPendingTxs) {
+                await this.checkPendingTx();
+            }
             
-            // await this.checkPendingTx();
             await delay(config.nonceCheckDelay);
         }
     }
@@ -308,6 +310,16 @@ class UPHammer {
     monitor = async function() {
         while(true) {
             await delay(this.config.monitorDelay);
+            let loop = state.monitor.tx.loop;
+            if (loop < config.stallReset.threshold) {
+                state.stallResetCycles++;
+            } else {
+                state.stallResetCycles = 0;
+            }
+            if (state.stallResetCycles > config.stallReset.cycles) {
+                warn(`UPhammer stalled. exiting...`, MONITOR);
+                process.exit();
+            }
             utils.monitorCycle(state);
         }
     }

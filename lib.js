@@ -267,7 +267,9 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
             log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
             state[type.toLowerCase()].transferable = true;
             state.monitor.tx.receipts.mints++;
-            logTx(config.txTransactionLog, receipt.transactionHash, nonce);
+            if(state.config.logTx) {
+                logTx(state.config.txTransactionLog, receipt.transactionHash, nonce);
+            }
             accountForNonce(state, nonce);
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
@@ -328,7 +330,9 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         })
         .on('receipt', function(receipt){
             log(`Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
-            logTx(config.txTransactionLog, receipt.transactionHash, nonce);
+            if(state.config.logTx) {
+                logTx(state.config.txTransactionLog, receipt.transactionHash, nonce);
+            }
             state.monitor.tx.receipts.transfers++;
             accountForNonce(state, nonce);
         })

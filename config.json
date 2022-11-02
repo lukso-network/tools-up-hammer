@@ -25,18 +25,19 @@
     "faucetDelayMinutes": 30,
     "balanceUpdateDelay": 5000,
     "nonceDivergenceLimit": 500, 
-    "dev_loop" : [
-        "loop_deployLSP7",
-        "loop_deployLSP7",
-        "loop_mintLSP8",
-        "loop_mintLSP7"
-    ],
+    "dev_loop" : [],
     "logLevel": 3,
     "txErrorLog": "./txErrors",
     "txTransactionLog": "./txLog",
+    "logTx": false,
     "deployProxy": true,
     "initialUPs": 2,
     "presets": {},
+    "checkPendingTxs": false,
+    "stallReset": {
+        "threshold": 10,
+        "cycles": 6
+    },
     "savePresets": false,
     "deployOnly": false,
     "defaultGasPrice": "1000000000",

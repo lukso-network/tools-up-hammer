@@ -151,7 +151,7 @@ function errorHandler(state, error, nonce, receipt, gasPrice) {
         state.monitor.tx.errors.misc++;
     }
     let hash = extractHashFromStacktrace(error);
-    if (hash) {
+    if (hash && state.config.logTx) {
         fs.writeFile(state.config.txErrorLog, hash + "\n", { flag: 'a+' }, err => {
             if (err) {
               console.error(err);
@@ -258,7 +258,7 @@ function monitorCycle(state) {
     monitor(`************************************[*]************************************[*]`);
     monitor([`Memory Usage`,`${usage}% `])
     monitor([`Max Delay ${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`, `Tx Balance ${state.balance}`]);
-    monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`, `Chk Pending `, `${state.monitor.tx.checkPending}`]); 
+    monitor([`Tx Total`, `${realTx}`, `Cycles`, `${state.monitor.tx.loop}`, `Ratio`, `${txLoopRatio}%`]); 
     monitor([`Transfer`, `${state.monitor.tx.sent}`, `Attempted`, `${state.monitor.tx.attemptedTx}`]);
     monitor([`    Mint`, `${state.monitor.tx.mint}`,  `Attempted`, `${state.monitor.tx.attemptedMint}` ]);
     monitor([`Receipts`, `${totalReceipts}`, `Pending`, `${Object.keys(state.pendingTxs).length}`, `Tx Hashes`, `${state.monitor.tx.hash}`]);
@@ -270,7 +270,7 @@ function monitorCycle(state) {
     
     let netFails = state.monitor.networkFailures;
     let totalNetworkFailures = netFails.socketHangUp + netFails.econnreset + netFails.econnrefused + netFails.timedout + netFails.socketDisconnectedTLS + netFails.enotfound
-    monitor(`Network Failures (${totalNetworkFailures})`);
+    monitor(`Network Failures ${totalNetworkFailures}`);
     monitor([`   Socket Hang up`, `${state.monitor.networkFailures.socketHangUp}`,    `Disconnect preTLS`, `${state.monitor.networkFailures.socketDisconnectedTLS}`])
     monitor([`   ECONNRESET`, `${state.monitor.networkFailures.econnreset}`,          `ECONNREFUSED`, `${state.monitor.networkFailures.econnrefused}`])
     monitor([`   ETIMEDOUT`, `${state.monitor.networkFailures.timedout}`,             `ENOTFOUND`, `${state.monitor.networkFailures.enotfound}`])           

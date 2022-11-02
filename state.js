@@ -22,6 +22,7 @@ let state = {
     EOA: {},
     config: null,
     backoff: 0,
+    stallResetCycles: 0,
     monitor: resetMonitor()
 }
 
