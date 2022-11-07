@@ -6,15 +6,26 @@ const INFO = 2;
 const MONITOR = 3;
 const QUIET = 4;
 
-function log(msg, level) {
+function formatProfile(state) {
+    let profile = '';
+    if(state && state.profile) {
+        profile = ` (${state.profile})`;
+    }
+    return profile;
+}
+
+
+function log(msg, level, state) {
+    profile = formatProfile(state);
     if (level >= config.logLevel) {
-        console.log("[+] " + msg);
+        console.log(`[+]${profile} ${msg}`);
     }
 }
 
-function warn(msg, level) {
+function warn(msg, level, state) {
+    profile = formatProfile(state);
     if (level >= config.logLevel) {
-        console.log("[!] " + msg);
+        console.log(`[!]${profile} ${msg}`);
     }
 }
 

@@ -68,7 +68,7 @@ class UPHammer {
         actions.loop_mintLSP8,
     ];
 
-    constructor(user_config, user_presets) {
+    constructor(user_config, profile_or_user_presets) {
         // merge config
         this.config = config;
         this.mergeConfig(user_config);
@@ -96,6 +96,14 @@ class UPHammer {
           chainId: this.config.chainId, // Chain Id of the network you want to connect to
         });
         
+        let user_presets = {};
+        let profile;
+        if (Array.isArray(profile_or_user_presets)) {
+            user_presets = profile_or_user_presets;
+        } else {
+            profile = profile_or_user_presets;
+        }
+
         // store presets in config if they are preset
         this.config.presets = user_presets ? user_presets : {};
         
@@ -109,6 +117,7 @@ class UPHammer {
                 transfer: EOA_transfer
             },
             config: this.config,
+            profile
         };
     }
 

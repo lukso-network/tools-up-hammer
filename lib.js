@@ -34,18 +34,18 @@ async function initUP(state) {
     if(config.presets[config.wallets.deploy.address]
         && config.presets[config.wallets.deploy.address].up.length > 0 
         && !state.up[config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS]) {
-        log(`Found UP addresses. Skipping deployments`, INFO);
+        log(`Found UP addresses. Skipping deployments`, INFO, state);
         erc725_address = config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[0].KEYMANAGER_ADDRESS;
     } else if(config.presets[config.wallets.deploy.address] 
         && config.presets[config.wallets.deploy.address].up.length > 1 
         && !state.up[config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS]) {
-        log(`Found Secondary UP. Skipping deployments`, INFO);
+        log(`Found Secondary UP. Skipping deployments`, INFO, state);
         erc725_address = config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS;
         km_address = config.presets[config.wallets.deploy.address].up[1].KEYMANAGER_ADDRESS;
     } else {
-        log(`Deploying Profile`, INFO);
-        deployed = await deploy(lspFactory, config);
+        log(`Deploying Profile`, INFO, state);
+        deployed = await deploy(lspFactory, config, state);
         if(deployed) {
             erc725_address = deployed.ERC725Account.address;
             km_address = deployed.KeyManager.address;
@@ -55,8 +55,8 @@ async function initUP(state) {
         
     }
 
-    log(`ERC725 address:     ${erc725_address}`, INFO);
-    log(`KeyManager address: ${km_address}`, INFO);
+    log(`ERC725 address:     ${erc725_address}`, INFO, state);
+    log(`KeyManager address: ${km_address}`, INFO, state);
     erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
     km = new web3.eth.Contract(KeyManager.abi, km_address);
     state.up[erc725_address] = {
@@ -69,7 +69,7 @@ async function initUP(state) {
 }
 
 // Deploy LSP3 Account
-async function deploy(lspFactory, config) {
+async function deploy(lspFactory, config, state) {
     lspFactory = reinitLspFactory(lspFactory, config);
 
     let controller_addresses = [
@@ -77,7 +77,7 @@ async function deploy(lspFactory, config) {
         config.wallets.transfer.address
     ];
     try {
-        const up = await lspFactory.LSP3UniversalProfile.deploy(
+        const up = await lspFactory.UniversalProfile.deploy(
             {
                 controllerAddresses: controller_addresses, // Address which will controll the UP
                 lsp3Profile: lsp3Profile,
@@ -93,12 +93,12 @@ async function deploy(lspFactory, config) {
                     deployProxy: config.deployProxy, 
                 }
             }).catch((e) =>{
-                console.log(e);
+                warn(e, INFO, state);
             })
     
         return up;
     } catch(e) {
-        warn("Error during UP Deployment", INFO);
+        warn("Error during UP Deployment", INFO, state);
         console.log(e);
     }
     
@@ -116,7 +116,7 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
         {
             deployProxy: state.config.deployProxy
         }).catch((e) => {
-            console.log(e);
+            warn(e, INFO, state);
         })
 
         
@@ -134,7 +134,7 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
         
         
     } catch (e) {
-        warn("Error during LSP8 Deployment", INFO);
+        warn("Error during LSP8 Deployment", INFO, state);
     }
     
 }
@@ -153,7 +153,7 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
         {
             deployProxy: state.config.deployProxy
         }).catch((e) => {
-            console.log(e);
+            warn(e, INFO, state);
         })
         
         const lsp7 = new web3.eth.Contract(
@@ -166,8 +166,8 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
 
         return lsp7;
     } catch(e) {
-        warn("Error during LSP7 Deployment", INFO);
-        console.log(e);
+        warn("Error during LSP7 Deployment", INFO, state);
+        warn(e, INFO, state);
     }
     
 }
