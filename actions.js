@@ -10,7 +10,7 @@ const {savePresets, errorHandler, whichWeb3} = require("./utils");
 
 async function loop_deployUP(state) {
     if(Object.keys(state.up).length < state.config.deployLimits.up) {
-        log(`Deploying new UP`, INFO);
+        log(`Deploying new UP`, INFO, state);
         let {lspFactory, web3, EOA, up, config} = state;
         let erc725, km;
         let erc725_address, km_address;
@@ -25,8 +25,8 @@ async function loop_deployUP(state) {
         } else {
             let deployed = await deploy(lspFactory, config);
             if(deployed) {
-                erc725_address = deployed.ERC725Account.address;
-                km_address = deployed.KeyManager.address;
+                erc725_address = deployed.LSP0ERC725Account.address;
+                km_address = deployed.LSP6KeyManager.address;
             } else {
                 return;
             }
@@ -53,7 +53,7 @@ async function loop_deployUP(state) {
 async function loop_deployLSP7(state) {
     let config = state.config;
     if(Object.keys(state.lsp7.addresses).length < config.deployLimits.lsp7) {
-        log(`Deploying new LSP7`, INFO);
+        log(`Deploying new LSP7`, INFO, state);
         let {lspFactory, web3, EOA, up, lsp7} = state;
         let lsp7_asset, erc725_address;
 
@@ -93,7 +93,7 @@ async function loop_deployLSP7(state) {
 async function loop_deployLSP8(state) {
     let config = state.config;
     if(Object.keys(state.lsp8.addresses).length < config.deployLimits.lsp8) {
-        log(`Deploying new LSP8`, INFO);
+        log(`Deploying new LSP8`, INFO, state);
         let {lspFactory, web3, EOA, up, lsp8} = state;
         let lsp8_asset, erc725_address
         let totalSupply = 0; 
@@ -251,6 +251,11 @@ async function loop_transferLSP8(state) {
 
                 // find out who owns it
                 lsp8_contract.methods.tokenOwnerOf(tokenIdBytes).call().then(owner => {
+                    // there is a chance that the preset for the LSP8 has been loaded before the UP
+                    // that owns it, so check that `owner` is present in `up` state before proceeding
+                    if(!up[owner]) { 
+                        return; 
+                    }
                     log(`[+] Sender ${owner} owns ${tokenIdBytes} token`, DEBUG);
 
                     // select a random recipient

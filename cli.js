@@ -48,7 +48,7 @@ if(args) {
 }
 
 if(config.buildPresets) {
-    let content = fs.readFileSync(`profiles/l16profile${profileNumber}.json`, 'utf-8')  
+    let content = fs.readFileSync(`profiles/profile${profileNumber}.json`, 'utf-8')  
     let profile = JSON.parse(content);
     
     config = {

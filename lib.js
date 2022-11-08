@@ -47,8 +47,8 @@ async function initUP(state) {
         log(`Deploying Profile`, INFO, state);
         deployed = await deploy(lspFactory, config, state);
         if(deployed) {
-            erc725_address = deployed.ERC725Account.address;
-            km_address = deployed.KeyManager.address;
+            erc725_address = deployed.LSP0ERC725Account.address;
+            km_address = deployed.LSP6KeyManager.address;
         } else {
             return;
         }
@@ -93,7 +93,7 @@ async function deploy(lspFactory, config, state) {
                     deployProxy: config.deployProxy, 
                 }
             }).catch((e) =>{
-                warn(e, INFO, state);
+                warn(e.toString().substring(0,100), INFO, state);
             })
     
         return up;
@@ -116,7 +116,7 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
         {
             deployProxy: state.config.deployProxy
         }).catch((e) => {
-            warn(e, INFO, state);
+            warn(e.toString().substring(0,100), INFO, state);
         })
 
         
@@ -153,7 +153,7 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
         {
             deployProxy: state.config.deployProxy
         }).catch((e) => {
-            warn(e, INFO, state);
+            warn(e.toString().substring(0,100), INFO, state);
         })
         
         const lsp7 = new web3.eth.Contract(

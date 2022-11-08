@@ -1,6 +1,7 @@
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
 
 const Web3 = require('web3');
+const fs = require('fs');
 
 const crypto = require('crypto');
 const delay = require('await-delay');
@@ -98,7 +99,7 @@ class UPHammer {
         
         let user_presets = {};
         let profile;
-        if (Array.isArray(profile_or_user_presets)) {
+        if (typeof profile_or_user_presets === 'object') {
             user_presets = profile_or_user_presets;
         } else {
             profile = profile_or_user_presets;
@@ -106,8 +107,8 @@ class UPHammer {
 
         // store presets in config if they are preset
         this.config.presets = user_presets ? user_presets : {};
-        
-        state = {...state,
+
+        this.state = {...state,
             web3: this.web3,
             ws: this.ws,
             lspFactory: this.lspFactory,
@@ -121,6 +122,8 @@ class UPHammer {
         };
     }
 
+    
+
     mergeConfig = function(user_config) {
         for(let setting in user_config) {
             this.config[setting] = user_config[setting];
@@ -129,16 +132,16 @@ class UPHammer {
 
     init = async function(num_to_deploy) {
         for(let i=0; i < num_to_deploy; i++) {
-            await initUP(state);
+            await initUP(this.state);
         }
      
     }
 
     continueDeployments = function () {
         let _continue = false;
-        if(Object.keys(state.up).length <= this.config.deployLimits.up
-            && Object.keys(state.lsp7.addresses).length <= this.config.deployLimits.lsp7
-            && Object.keys(state.lsp8.addresses).length <= this.config.deployLimits.lsp8)
+        if(Object.keys(this.state.up).length <= this.config.deployLimits.up
+            && Object.keys(this.state.lsp7.addresses).length <= this.config.deployLimits.lsp7
+            && Object.keys(this.state.lsp8.addresses).length <= this.config.deployLimits.lsp8)
         {
             _continue = true;
         }
@@ -147,19 +150,19 @@ class UPHammer {
 
     deployActors = async function () {
         // wait until there are UPs loaded into state
-        while(Object.keys(state.up).length === 0) {
+        while(Object.keys(this.state.up).length === 0) {
             await delay(1000);
         }
         // run custom defined dev_loop
         for(const action of this.config.dev_loop) {
             await delay(this.config.deploymentDelay);
-            await actions[action](state);
+            await actions[action](this.state);
         }
         // the main deploy loop. Deploys up to the limits set in the config
         while(this.continueDeployments()) {
             let next = randomIndex(this.deploy_actions); 
             try {
-                await this.deploy_actions[next](state);
+                await this.deploy_actions[next](this.state);
                 await delay(this.config.deploymentDelay);
             } catch (e) {
                 warn(`Error during ${this.deploy_actions[next].name}`, INFO);
@@ -172,7 +175,7 @@ class UPHammer {
     doWebSocket = function() {
         this.ws.eth.getBalance(this.config.wallet.transfer.address)
                 .then(balance => console.log(`[+] WS Balance ${balance}`))
-                .catch(e => errorHandler(state, e));
+                .catch(e => errorHandler(this.state, e));
     }
 
     runWebSocket = async function() {
@@ -195,8 +198,8 @@ class UPHammer {
 
             let next = randomIndex(this.transfer_actions); 
             try {
-                if(Object.keys(state.up).length > 0) { 
-                    this.transfer_actions[next](state);    
+                if(Object.keys(this.state.up).length > 0) { 
+                    this.transfer_actions[next](this.state);    
                 }
             } catch(e) {
                 warn(`error during ${this.transfer_actions[next].name}`, INFO);
@@ -206,17 +209,17 @@ class UPHammer {
             let timeToDelay;
             // crypto.randomInt cannot handle floats, so only select randomly if we are at 1 or above
             if(this.config.maxDelay >= 1) {
-                timeToDelay = crypto.randomInt(this.config.maxDelay) + state.backoff;
+                timeToDelay = crypto.randomInt(this.config.maxDelay) + this.state.backoff;
             } else if(this.config.maxDelay > 0) {
                 // if we are between 0 and 1, just use Math.random
-                timeToDelay = Math.random(this.config.maxDelay) + state.backoff;
+                timeToDelay = Math.random(this.config.maxDelay) + this.state.backoff;
             } else {
-                timeToDelay = 0 + state.backoff;
+                timeToDelay = 0 + this.state.backoff;
             }
             
             // apply backoff if it exists for this cycle
-            state.backoff > 0 ? state.backoff-- : state.backoff = 0;
-            state.monitor.tx.loop++;
+            this.state.backoff > 0 ? this.state.backoff-- : this.state.backoff = 0;
+            this.state.monitor.tx.loop++;
             await delay(timeToDelay);
         }
     }
@@ -227,28 +230,28 @@ class UPHammer {
      * If no TX is found for that hash, the nonce is added to the state.droppedNonces array if it doesn't already exist
      */
     checkPendingTx = async function () {
-        let hashes = Object.keys(state.pendingTxs);
+        let hashes = Object.keys(this.state.pendingTxs);
         for(let i=0; i<hashes.length; i++) {
             
             let hash = hashes[i];
             // if the chain is already ahead of this nonce, we just clear it out
-            if(state.pendingTxs[hash] < state.nonceFromChain) {
-                delete state.pendingTxs[hash];
+            if(this.state.pendingTxs[hash] < this.state.nonceFromChain) {
+                delete this.state.pendingTxs[hash];
             } else {
-                state.monitor.tx.checkPending++;
+                this.state.monitor.tx.checkPending++;
                 this.web3.eth.getTransaction(hash)
                 .then((tx) => {
                     if(!tx) {
                         // tx is dropped
-                        utils.addNonceToDroppedNoncesIfNotPresent(state, state.pendingTxs[hash]);
-                        delete state.pendingTxs[hash];
+                        utils.addNonceToDroppedNoncesIfNotPresent(this.state, this.state.pendingTxs[hash]);
+                        delete this.state.pendingTxs[hash];
                     } else if(tx.blockNumber) {
                         // tx is mined
-                        delete state.pendingTxs[hash];
+                        delete this.state.pendingTxs[hash];
                     }
                 })
                 .catch((e) => {
-                    utils.errorHandler(state, e);
+                    utils.errorHandler(this.state, e);
                     // console.log(e);
                 })
 
@@ -273,19 +276,19 @@ class UPHammer {
             // stuck until the nonce is added
             this.web3.eth.getTransactionCount(this.config.wallets.transfer.address)
             .then((nonceFromChain) => {
-                state.nonceFromChain = nonceFromChain;
-                let threshold = state.config.nonceDivergenceLimit;
+                this.state.nonceFromChain = nonceFromChain;
+                let threshold = this.state.config.nonceDivergenceLimit;
                 // state.nonce is likely higher than nonceFromChain
                 // if it is not, then we are likely "behind" and in a recovering state
-                let divergence = state.nonce - nonceFromChain; 
+                let divergence = this.state.nonce - nonceFromChain; 
                 
                 if(divergence > threshold) {
-                    utils.addNonceToDroppedNoncesIfNotPresent(state, nonceFromChain);
+                    utils.addNonceToDroppedNoncesIfNotPresent(this.state, nonceFromChain);
                 }
             })
             .catch((e) => {
                 console.log(e);
-                utils.errorHandler(state,e);
+                utils.errorHandler(this.state,e);
             })
             if(config.checkPendingTxs) {
                 await this.checkPendingTx();
@@ -299,15 +302,15 @@ class UPHammer {
      * Checks the balances of both deploy and transfer accounts and aborts if both are not funded
      */
     checkBalance = async function (wallet) {
-        log(`Checking ${wallet} balance...`, QUIET);
+        log(`Checking ${wallet} balance...`, QUIET, this.state);
         if(this.config.wallets[wallet] === undefined) {
-            warn(`${wallet} wallet is not properly configured`, QUIET);
+            warn(`${wallet} wallet is not properly configured`, QUIET, this.state);
         }
         let address = this.config.wallets[wallet].address;
         let balance = await this.web3.eth.getBalance(address);
-        log(`Balance: ${balance}`, QUIET);
+        log(`Balance: ${balance}`, QUIET, this.state);
         if (balance === '0') {
-            warn(`[!] Go get some gas for ${this.config.wallets[wallet].address}`, QUIET);
+            warn(`[!] Go get some gas for ${this.config.wallets[wallet].address}`, QUIET, this.state);
             return false;
         }
         return true;
@@ -319,17 +322,17 @@ class UPHammer {
     monitor = async function() {
         while(true) {
             await delay(this.config.monitorDelay);
-            let loop = state.monitor.tx.loop;
+            let loop = this.state.monitor.tx.loop;
             if (loop < config.stallReset.threshold) {
-                state.stallResetCycles++;
+                this.state.stallResetCycles++;
             } else {
-                state.stallResetCycles = 0;
+                this.state.stallResetCycles = 0;
             }
-            if (state.stallResetCycles > config.stallReset.cycles) {
+            if (this.state.stallResetCycles > config.stallReset.cycles) {
                 warn(`UPhammer stalled. exiting...`, MONITOR);
                 process.exit();
             }
-            utils.monitorCycle(state);
+            utils.monitorCycle(this.state);
         }
     }
 
@@ -338,19 +341,19 @@ class UPHammer {
     updateBalance = async function() {
         while(true) {
             try {
-                let balance = await state.web3.eth.getBalance(state.config.wallets.transfer.address);
-                state.balance = balance;
+                let balance = await this.state.web3.eth.getBalance(this.state.config.wallets.transfer.address);
+                this.state.balance = balance;
             } catch(e) {
-                utils.errorHandler(state, e);
+                utils.errorHandler(this.state, e);
             }
-            await delay(state.config.balanceUpdateDelay);
+            await delay(this.state.config.balanceUpdateDelay);
         }
     }
     fundWallet = async function() {
         while(true) {
-            utils.fund(state);
+            utils.fund(this.state);
             let minute = 1000 * 60;
-            let timeToWait = state.config.faucetDelayMinutes * minute;
+            let timeToWait = this.state.config.faucetDelayMinutes * minute;
             await delay(timeToWait);
         }
     }
@@ -379,15 +382,15 @@ class UPHammer {
         if(!deploy_balance || !transfer_balance) {
             process.exit();
         }
-        state.balance = transfer_balance;
-        state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
+        this.state.balance = transfer_balance;
+        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
         let totalPending = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
-        log(`Transfer Wallet Nonce is ${state.nonce}`, MONITOR);
-        log(`Total Pending is ${totalPending}`, MONITOR);
+        log(`Transfer Wallet Nonce is ${this.state.nonce}`, MONITOR, this.state);
+        log(`Total Pending is ${totalPending}`, MONITOR, this.state);
         await this.init(this.config.initialUPs);
         // console.log(state);
         
-        if(!state.config.deployOnly) {
+        if(!this.state.config.deployOnly) {
             this.balanceAndFundLoop();
             this.monitor();
             this.nonceCheck();

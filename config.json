@@ -42,5 +42,7 @@
     "deployOnly": false,
     "defaultGasPrice": "1000000000",
     "gasIncrement": 1,
-    "backoff": 15
+    "backoff": 15,
+    "runServer": true,
+    "serverReportFile": "serverReport.json"
 }

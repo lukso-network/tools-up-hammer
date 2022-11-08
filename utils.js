@@ -254,7 +254,20 @@ function monitorCycle(state) {
     let heapUsed = memoryUsage.heapUsed;// / 1024 / 1024 * 100;
     let usage = ((heapUsed/heapTotal) * 100).toFixed(1);
     let external = (memoryUsage.external / 1024 / 1024 * 100).toFixed(1);
+    let netFails = state.monitor.networkFailures;
+    let totalNetworkFailures = netFails.socketHangUp + netFails.econnreset + netFails.econnrefused + netFails.timedout + netFails.socketDisconnectedTLS + netFails.enotfound
     
+    
+
+    if(state.config.runServer) {
+        report = {
+            usage,
+            monitor: state.monitor
+        }
+        fs.writeFile(state.config.serverReportFile, JSON.stringify(report, null, 4), function(fd, er) {})
+    }
+
+
     monitor(`************************************[*]************************************[*]`);
     monitor([`Memory Usage`,`${usage}% `])
     monitor([`Max Delay ${state.config.maxDelay}ms`, `Backoff ${state.backoff}ms`, `Tx Balance ${state.balance}`]);
@@ -268,8 +281,6 @@ function monitorCycle(state) {
     monitor([`    Invalid JSON`, `${state.monitor.tx.errors.invalidJSON}`,   `Nonce too low`, `${state.monitor.tx.errors.nonceTooLow}`]);
     monitor([`    Tx Not Mined`, `${state.monitor.tx.errors.txNotMined}`,             `Misc`, `${state.monitor.tx.errors.misc}`]);
     
-    let netFails = state.monitor.networkFailures;
-    let totalNetworkFailures = netFails.socketHangUp + netFails.econnreset + netFails.econnrefused + netFails.timedout + netFails.socketDisconnectedTLS + netFails.enotfound
     monitor(`Network Failures ${totalNetworkFailures}`);
     monitor([`   Socket Hang up`, `${state.monitor.networkFailures.socketHangUp}`,    `Disconnect preTLS`, `${state.monitor.networkFailures.socketDisconnectedTLS}`])
     monitor([`   ECONNRESET`, `${state.monitor.networkFailures.econnreset}`,          `ECONNREFUSED`, `${state.monitor.networkFailures.econnrefused}`])
@@ -341,7 +352,7 @@ function savePresets(state, presetsFile) {
         }
     }
 
-    let serialized = JSON.stringify(presets);
+    let serialized = JSON.stringify(presets, null, 4);
     fs.writeFile(presetsFile, serialized, err => {
         if (err) {
           console.error(err);
