@@ -9,7 +9,7 @@
             "privateKey": "0xf819fb843b6c90c121eb10506f2f3ba8e0c782b3bc07d7f164f3c807404de3df"
         }
     },
-    "maxDelay": 0,
+    "maxDelay": 10,
     "deploymentDelay": 1000,
     "nonceCheckDelay": 10000,
     "monitorDelay": 5000,
