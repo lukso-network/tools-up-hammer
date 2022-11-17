@@ -44,5 +44,6 @@
     "gasIncrement": 1,
     "backoff": 15,
     "runServer": true,
-    "serverReportFile": "serverReport.json"
+    "serverReportFile": "serverReport.json",
+    "reportingServer": "http://localhost:8080"
 }

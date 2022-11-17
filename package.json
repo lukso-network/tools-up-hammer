@@ -2,14 +2,15 @@
   "name": "uphammer",
   "version": "1.0.0",
   "description": "Stress Testing for Lukso l14/l16 networks",
-  "main": "uphammer.js",
+  "main": "tools/serverMonitor.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node tools/serverMonitor.js"
   },
   "author": "Justin Regele",
   "license": "ISC",
   "dependencies": {
-    "@lukso/lsp-factory.js": "^2.1.0",
+    "@lukso/lsp-factory.js": "^2.4.0",
     "await-delay": "^1.0.0",
     "dotenv": "^16.0.0",
     "line-reader": "^0.4.0",

@@ -5,5 +5,6 @@ WORKDIR /app
 COPY . .
 RUN npm install
 # remove this line and set by other means
-# ENV UPHAMMER_PROFILE=1
-CMD /bin/bash uphammerProfileEnv.sh 1> /tmp/uphammerOutput.txt 2>/tmp/errorOutput.txt
+#ENV UPHAMMER_PROFILE=1
+#ENTRYPOINT /bin/bash uphammerProfileEnv.sh 1> /tmp/uphammerOutput.txt 2>/tmp/errorOutput.txt 
+ENTRYPOINT /bin/bash cloudRun.sh

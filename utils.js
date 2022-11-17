@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const axios = require('axios');
+const Web3 = require('web3');
 
 const {log, warn, monitor, DEBUG, VERBOSE, INFO, MONITOR, QUIET} = require('./logging');
 
@@ -20,16 +21,6 @@ function nextNonce(state) {
             length: state.droppedNonces.amount,
         };
     } else if(state.incrementGasPrice.length > 0) {
-        // let droppedNonce = state.droppedNonces[0];
-        // let replacementNonce = state.incrementGasPrice[0] ? state.incrementGasPrice[0].nonce : droppedNonce + 1;
-        // if(state.incrementGasPrice[0] === undefined) {
-        //     log(`Dropped nonces ${state.droppedNonces.length}`, VERBOSE);
-            
-        // }
-        // we prefer the lesser of the two nonces
-        // if(droppedNonce < replacementNonce || replacementNonce === undefined) {
-        // if(droppedNonce) {
-            
         let next = state.incrementGasPrice.shift();
         nonce = next.nonce;
         if(!next.gasPrice) {
@@ -73,6 +64,10 @@ function addNonceToDroppedNoncesIfNotPresent(state, nonce) {
     state.droppedNonces.sort();
 }
 
+// this function might need to be removed because it creates useless traffic
+// if we received a `replacement transaction underpriced` error, that means the mempool
+// already has a TX using that nonce, and we don't actually have to create new TXs with that nonce
+// so processing and replaying is a waste of resources
 function replayAndIncrementGasPrice(state, nonce, gasPrice) {
     // first check if the nonce is already here
     // if it is, update the gasPrice
@@ -127,7 +122,6 @@ function backoff(state) {
 }
 
 function errorHandler(state, error, nonce, receipt, gasPrice) {
-    // Transaction was not mined within 750 seconds
     if(error.toString().includes("replacement transaction underpriced")) {
         state.monitor.tx.errors.underpriced++;
         replayAndIncrementGasPrice(state, nonce, gasPrice);
@@ -238,6 +232,24 @@ async function fund(state) {
         });
 }
 
+function reportToServer(host, data, state) {
+    let web3 = new Web3(state.config.provider);
+    let msg = JSON.stringify(data);
+    let signature = web3.eth.accounts.sign(msg, state.config.wallets.transfer.privateKey);
+    let url = `${host}/p/${process.env.UPHAMMER_PROFILE}/a/${state.config.wallets.transfer.address}/s/${signature}`
+    axios
+        .post(url, data)
+        .then(res => {
+          console.log(`statusCode: ${res.status}`);
+        //   console.log(res.data);
+          let data = res.data;
+          console.log(data);
+        })
+        .catch(error => {
+          console.error(error);
+        });
+}
+
 function monitorCycle(state) {
     let totalReceipts = state.monitor.tx.receipts.transfers + state.monitor.tx.receipts.mints + state.monitor.tx.receipts.reverts;
     let realTx = state.monitor.tx.sent + state.monitor.tx.mint;
@@ -257,7 +269,9 @@ function monitorCycle(state) {
     let netFails = state.monitor.networkFailures;
     let totalNetworkFailures = netFails.socketHangUp + netFails.econnreset + netFails.econnrefused + netFails.timedout + netFails.socketDisconnectedTLS + netFails.enotfound
     
-    
+    if(state.config.reportingServer) {
+        reportToServer(state.config.reportingServer, state.monitor, state);
+    }
 
     if(state.config.runServer) {
         report = {

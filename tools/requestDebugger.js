@@ -11,6 +11,9 @@ const OPERATION_CALL = 0;
 
 const web3 = new Web3(config.provider);
 
+let replayed = false;
+let incremented = false;
+
 async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice ) {
     try {
         let targetPayload = await lsp.methods.mint(up.erc725._address, amt_or_id, false, '0x').encodeABI();
@@ -27,6 +30,16 @@ async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice ) {
         })
         .on('transactionHash', function(hash){
             console.log(`[+] Tx: ${hash} Nonce: ${nonce}`);
+            if(!replayed) {
+                replayed = true;
+                amt_or_id++;
+                mint(lsp, up, amt_or_id, EOA, nonce, gasPrice);
+            }
+            if(!incremented) {
+                nonce++;
+                incremented = true;
+                mint(lsp, up, amt_or_id, EOA, nonce, gasPrice);
+            }
         })
         .on('receipt', function(receipt){
             console.log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `);
@@ -45,11 +58,20 @@ async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice ) {
 }
 
 async function main(profileNum) {
-    let rawProfile = await fs.readFileSync(`./profiles/l16profile${profileNum}.json`);
+    let rawProfile = await fs.readFileSync(`./profiles/profile${profileNum}.json`);
     let rawPresets = await fs.readFileSync(`./presets/presets${profileNum}.json`);
     let profile = JSON.parse(rawProfile);
     let presets = JSON.parse(rawPresets);
     let EOA = profile.wallets;
+    
+
+    // let balance = await web3.eth.getBalance("0xa69eb1dc130fdf0d33a6f64e6fb4bb0562162b0a");
+    
+    // console.log(balance);
+    // balance = await web3.eth.getBalance("0xff50407857a06a5163007c58304e3f0446cdc837");
+    // console.log(balance);
+    // balance = await web3.eth.getBalance("0x79b18703141c09d19fa78fdd1d24a0a757a1e66b");
+    // console.log(balance);
     
     web3.eth.accounts.wallet.add(EOA.transfer.privateKey);
 
@@ -85,8 +107,9 @@ async function main(profileNum) {
 
     let gasPrice = config.defaultGasPrice;
     gasPrice = parseInt(gasPrice) + parseInt(gasPrice);
+    // gasPrice = parseInt(gasPrice) + 1;
 
     await mint(lsp7, up, 1, EOA, nonce, gasPrice);
 }
 
-main(7);
+main(3);
