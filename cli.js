@@ -23,6 +23,7 @@ if(args) {
             config = {
                 buildPresets: true,
                 deployOnly: true,
+                savePresets: true,
                 logLevel: 2
             }
         
