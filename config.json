@@ -45,5 +45,5 @@
     "backoff": 15,
     "runServer": true,
     "serverReportFile": "serverReport.json",
-    "reportingServer": "http://localhost:8080"
+    "reportingServer": "https://1f95-95-90-242-198.ngrok.io"
 }

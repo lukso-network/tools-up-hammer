@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
-const app = express();
+var cors = require('cors');
+
 const Web3 = require("web3");
 var bodyParser = require('body-parser')
 
@@ -8,6 +9,9 @@ var jsonParser = bodyParser.json()
 
 const config = require("../config.json");
 const {getAddresses, getProfiles} = require("../helpers");
+
+
+const app = express();
 
 const web3 = new Web3(config.provider);
 
@@ -22,6 +26,8 @@ console.log('Starting with authorized addresses...');
 for(let i=0;i<addresses.length; i++) {
   console.log(addresses[i]);
 }
+
+app.use(cors());
 
 app.post('/p/:profileId/a/:address/s/:signature', jsonParser, (req, res) => {
   if(addresses.includes(req.params.address)) {

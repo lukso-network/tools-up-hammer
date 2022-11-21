@@ -235,8 +235,9 @@ async function fund(state) {
 function reportToServer(host, data, state) {
     let web3 = new Web3(state.config.provider);
     let msg = JSON.stringify(data);
-    let signature = web3.eth.accounts.sign(msg, state.config.wallets.transfer.privateKey);
-    let url = `${host}/p/${process.env.UPHAMMER_PROFILE}/a/${state.config.wallets.transfer.address}/s/${signature}`
+    let profile = process.env.UPHAMMER_PROFILE? process.env.UPHAMMER_PROFILE : process.env.CLOUD_RUN_TASK_INDEX+1
+    let signature = web3.eth.accounts.sign(msg, state.config.wallets.transfer.privateKey).messageHash;
+    let url = `${host}/p/${profile}/a/${state.config.wallets.transfer.address}/s/${signature}`
     axios
         .post(url, data)
         .then(res => {
