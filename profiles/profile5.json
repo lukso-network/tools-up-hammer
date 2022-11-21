@@ -1,22 +1,13 @@
 {
     "wallets": {
         "transfer": {
-            "address": "0x84A130Bb9404B973984A9b76050AEfD404F8e6Bf",
-            "privateKey": "0x0d0b8480e8a380618be49c051330e9005d7d0c7c807c5b1f4ba5a9221439dbc2"
+            "address": "0xa8918F6253fE86D365bb130221e947b3dDc54459",
+            "privateKey": "0xf9fd1fe55d34817647ae32a6fc76ef699fbb99f628157836c0b2c604b61497b0"
         },
         "deploy": {
-            "address": "0xABD8529925b829C52DFA0D778457Fd52EfF87ED6",
-            "privateKey": "0xacb6e1c017e22327d1808746cb77bc38039d7ec58cb99d80748e91ecd96d9bc0"
+            "address": "0xf0Cba43b415328bD77328C0B6368249e02886192",
+            "privateKey": "0x3a36d5b334fca8ed51c29750611edc4d71766cbcbfe29e9965b44446083b4f3f"
         }
     },
-    "maxDelay": 10,
-    "deploymentDelay": 1000,
-    "nonceCheckDelay": 10000,
-    "monitorDelay": 5000,
-    "logLevel": 3,
-    "deployOnly": false,
-    "savePresets": true,
-    "presetsFile": "./presets/presets5.json",
-    "backoff": 15,
-    "locked": true
+    "presetsFile": "./presets/presets5.json"
 }
