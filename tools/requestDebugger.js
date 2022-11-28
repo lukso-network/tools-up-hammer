@@ -112,4 +112,4 @@ async function main(profileNum) {
     await mint(lsp7, up, 1, EOA, nonce, gasPrice);
 }
 
-main(3);
+main(7);
