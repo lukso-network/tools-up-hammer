@@ -30,30 +30,17 @@ async function initUP(state) {
 
     let erc725_address, erc725;
     let km_address, km;
-    let up, deployed;
-    if(config.presets[config.wallets.deploy.address]
-        && config.presets[config.wallets.deploy.address].up.length > 0 
-        && !state.up[config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS]) {
-        log(`Found UP addresses. Skipping deployments`, INFO, state);
-        erc725_address = config.presets[config.wallets.deploy.address].up[0].ERC725_ADDRESS;
-        km_address = config.presets[config.wallets.deploy.address].up[0].KEYMANAGER_ADDRESS;
-    } else if(config.presets[config.wallets.deploy.address] 
-        && config.presets[config.wallets.deploy.address].up.length > 1 
-        && !state.up[config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS]) {
-        log(`Found Secondary UP. Skipping deployments`, INFO, state);
-        erc725_address = config.presets[config.wallets.deploy.address].up[1].ERC725_ADDRESS;
-        km_address = config.presets[config.wallets.deploy.address].up[1].KEYMANAGER_ADDRESS;
+    
+    
+    log(`Deploying Profile`, INFO, state);
+    let deployed = await deploy(lspFactory, config, state);
+    if(deployed) {
+        erc725_address = deployed.LSP0ERC725Account.address;
+        km_address = deployed.LSP6KeyManager.address;
     } else {
-        log(`Deploying Profile`, INFO, state);
-        deployed = await deploy(lspFactory, config, state);
-        if(deployed) {
-            erc725_address = deployed.LSP0ERC725Account.address;
-            km_address = deployed.LSP6KeyManager.address;
-        } else {
-            return;
-        }
-        
+        return;
     }
+    
 
     log(`ERC725 address:     ${erc725_address}`, INFO, state);
     log(`KeyManager address: ${km_address}`, INFO, state);
