@@ -1,4 +1,8 @@
 const LSPFactory = require('@lukso/lsp-factory.js').LSPFactory;
+const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
+const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
+const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
+const LSP8IdentifiableDigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP8IdentifiableDigitalAsset.json');
 
 const Web3 = require('web3');
 const fs = require('fs');
@@ -131,10 +135,72 @@ class UPHammer {
     }
 
     init = async function(num_to_deploy) {
-        for(let i=0; i < num_to_deploy; i++) {
-            await initUP(this.state);
+        let initialized = false;
+        if(this.config.presets) {
+            initialized = await this.loadPresets();
+        } 
+
+        if(!initialized) {
+            for(let i=0; i < num_to_deploy; i++) {
+                await initUP(this.state);
+            }
         }
-     
+    }
+
+    loadPresets = async function() {
+        if (!this.config.presets[config.wallets.deploy.address]) { return false }
+        // load UPs
+        let presetUPs = this.config.presets[config.wallets.deploy.address] ? 
+            this.config.presets[config.wallets.deploy.address].up : [];
+        for(let i=0; i< presetUPs.length; i++) {
+            let erc725_address = presetUPs[i].ERC725_ADDRESS;
+            let km_address = presetUPs[i].KEYMANAGER_ADDRESS;
+            log(`ERC725 address:     ${erc725_address}`, INFO, this.state);
+            log(`KeyManager address: ${km_address}`, INFO, this.state);
+            let erc725 = new this.state.web3.eth.Contract(UniversalProfile.abi, erc725_address);
+            let km = new this.state.web3.eth.Contract(KeyManager.abi, km_address);
+            this.state.up[erc725_address] = {
+                erc725,
+                km
+            }
+        } 
+        // make sure we have deployed some UPs 
+        if(Object.keys(this.state.up).length == 0) { return false; }
+
+        let lsp7presets = this.config.presets[config.wallets.deploy.address].lsp7;
+        for(let i=0; i<lsp7presets.length; i++) {
+            let lsp7_address = lsp7presets[i];
+            let lsp7_asset = new this.state.web3.eth.Contract(LSP7Mintable.abi, lsp7_address);
+            let erc725_address;
+            try {
+                erc725_address = await lsp7_asset.methods.owner().call();
+            } catch(e) {
+                console.log(e);
+            }
+            log(`LSP7 address:       ${lsp7_asset._address}`, INFO, this.state);
+            this.state.lsp7.addresses[lsp7_asset._address] = {
+                owner: erc725_address
+            }
+        }
+
+        let lsp8presets = this.config.presets[config.wallets.deploy.address].lsp8;
+        for(let i=0; i<lsp8presets.length; i++) {
+            let lsp8_address = lsp8presets[i];
+            let lsp8_asset = new web3.eth.Contract(LSP8IdentifiableDigitalAsset.abi, lsp8_address);
+            let erc725_address = await lsp8_asset.methods.owner().call();
+            let totalSupply = await lsp8_asset.methods.totalSupply().call();
+            let currentId = totalSupply;
+
+            log(`LSP8 address:       ${lsp8_asset._address}`, INFO, this.state);
+        
+            this.state.lsp8.addresses[lsp8_asset._address] = {
+                owner: erc725_address,
+                totalSupply,
+                currentId
+            } 
+        }
+
+        return true;
     }
 
     continueDeployments = function () {
@@ -377,16 +443,16 @@ class UPHammer {
      * Because deployment loop relies heavily on await, it is put last. This seemed to help 
      */
     start = async function () {
-        let deploy_balance = await this.checkBalance("deploy");
-        let transfer_balance = await this.checkBalance("transfer");
-        if(!deploy_balance || !transfer_balance) {
-            process.exit();
-        }
-        this.state.balance = transfer_balance;
-        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
-        let totalPending = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
-        log(`Transfer Wallet Nonce is ${this.state.nonce}`, MONITOR, this.state);
-        log(`Total Pending is ${totalPending}`, MONITOR, this.state);
+        // let deploy_balance = await this.checkBalance("deploy");
+        // let transfer_balance = await this.checkBalance("transfer");
+        // if(!deploy_balance || !transfer_balance) {
+        //     process.exit();
+        // }
+        // this.state.balance = transfer_balance;
+        // this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
+        // let totalPending = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
+        // log(`Transfer Wallet Nonce is ${this.state.nonce}`, MONITOR, this.state);
+        // log(`Total Pending is ${totalPending}`, MONITOR, this.state);
         await this.init(this.config.initialUPs);
         // console.log(state);
         

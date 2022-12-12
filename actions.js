@@ -56,25 +56,13 @@ async function loop_deployLSP7(state) {
         log(`Deploying new LSP7`, INFO, state);
         let {lspFactory, web3, EOA, up, lsp7} = state;
         let lsp7_asset, erc725_address;
-
-        if(config.presets[config.wallets.deploy.address] &&
-            Object.keys(lsp7.addresses).length < config.presets[config.wallets.deploy.address].lsp7.length) {
-            let preset = Object.keys(lsp7.addresses).length;
-            lsp7_asset = new web3.eth.Contract(LSP7Mintable.abi, config.presets[config.wallets.deploy.address].lsp7[preset]);
-            try {
-                erc725_address = await lsp7_asset.methods.owner().call();
-            } catch(e) {
-                console.log(e);
-            }
-            
-        } else {
-            if(Object.keys(up).length == 0 ) {
-                return;
-            }
-            erc725_address = randomKey(up); 
-            lsp7_asset = await deployLSP7(lspFactory, web3, erc725_address, EOA, state);
+   
+        if(Object.keys(up).length == 0 ) {
+            return;
         }
-
+        erc725_address = randomKey(up); 
+        lsp7_asset = await deployLSP7(lspFactory, web3, erc725_address, EOA, state);
+    
         if(lsp7_asset) {
             log(`LSP7 address:       ${lsp7_asset._address}`, INFO);
             state.lsp7.addresses[lsp7_asset._address] = {
