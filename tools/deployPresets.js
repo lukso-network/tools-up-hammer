@@ -28,4 +28,4 @@ function deployAll(numProfiles) {
     }
 }
 
-deployAll(9);
+deployAll(30);

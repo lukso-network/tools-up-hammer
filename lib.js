@@ -50,7 +50,7 @@ async function initUP(state) {
         erc725,
         km
     }
-    if(state.config.savePresets) {
+    if(state.config.buildPresets) {
         savePresets(state, state.config.presetsFile);
     }
 }

@@ -71,7 +71,7 @@ async function fundSingleAccount(funder, recipient, amount) {
     
 }
 
-async function fundPresets(funder, presets, amountToFund) {
+async function fundProfiles(funder, presets, amountToFund) {
     if(!amountToFund) {
         // will fund using the entire balance
         amountToFund = await web3.eth.getBalance(funder.address);
@@ -116,7 +116,7 @@ async function main() {
         profiles.push(profile);
     }
 
-    await fundPresets(funder, profiles, amountToFund);
+    await fundProfiles(funder, profiles, amountToFund);
 }
 
 main();

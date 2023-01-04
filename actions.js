@@ -43,7 +43,7 @@ async function loop_deployUP(state) {
             erc725,
             km
         }
-        if(state.config.savePresets) {
+        if(state.config.buildPresets) {
             savePresets(state, state.config.presetsFile);
         }
         
@@ -69,7 +69,7 @@ async function loop_deployLSP7(state) {
                 owner: erc725_address,
                 totalSupply: 0,
             }
-            if(state.config.savePresets) {
+            if(state.config.buildPresets) {
                 savePresets(state, state.config.presetsFile);
             }
         }
@@ -117,7 +117,7 @@ async function loop_deployLSP8(state) {
                 totalSupply,
                 currentId
             } 
-            if(state.config.savePresets) {
+            if(state.config.buildPresets) {
                 savePresets(state, state.config.presetsFile);
             }
         }

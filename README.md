@@ -122,7 +122,7 @@ const QUIET = 4;
 
 **presets** see presets section
 
-**savePresets** (boolean) whether to save deployed UPs and LSPs into the presets file
+**buildPresets** (boolean) whether to save deployed UPs and LSPs into the presets file. This is set when building out presets
 
 **presetsFile** (string) file to save presets to. NOTE right now this file must already exist. No check is made to create the file. This can be omitted if `savePresets` is set to false.
 
