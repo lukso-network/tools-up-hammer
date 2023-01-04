@@ -4,7 +4,7 @@ const config = require("../config.json");
 const {getAddresses, getProfiles} = require("../helpers");
 
 let web3 = new Web3(config.provider);
-
+console.log(config.provider);
 const profileDir = "./profiles/";
 
 async function testProfileBalances(web3, profiles) {

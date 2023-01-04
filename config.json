@@ -38,7 +38,7 @@
         "threshold": 10,
         "cycles": 6
     },
-    "savePresets": false,
+    "buildPresets": false,
     "deployOnly": false,
     "defaultGasPrice": "1000000000",
     "gasIncrement": 1,
