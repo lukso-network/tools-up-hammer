@@ -15,15 +15,22 @@ function formatProfile(state) {
 }
 
 
-function log(msg, level, state) {
-    profile = formatProfile(state);
+function log(msg, level) {
+    let profile;
+    if(this.state) {
+        profile = formatProfile(this.state);
+    } 
+    
     if (level >= config.logLevel) {
         console.log(`[+]${profile} ${msg}`);
     }
 }
 
-function warn(msg, level, state) {
-    profile = formatProfile(state);
+function warn(msg, level) {
+    let profile;
+    if(this.state) {
+        profile = formatProfile(this.state);
+    }
     if (level >= config.logLevel) {
         console.log(`[!]${profile} ${msg}`);
     }

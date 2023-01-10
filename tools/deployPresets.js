@@ -1,12 +1,14 @@
 const fs = require("fs");
 const UPHammer = require("../uphammer");
 
+var instances = [];
 
-function deployPresets(profileNumber) {
+function configurePresets(profileNumber) {
     config = {
         buildPresets: true,
         deployOnly: true,
-        logLevel: 2
+        logLevel: 2,
+        savePresets: true
     }
     
     let content = fs.readFileSync(`profiles/profile${profileNumber}.json`, 'utf-8');
@@ -16,16 +18,34 @@ function deployPresets(profileNumber) {
         ...profile,
         ...config
     }
-    
-    
     const uphammer = new UPHammer(config, profileNumber);
-    uphammer.start();    
+    instances.push(uphammer);
+
 }
 
-function deployAll(numProfiles) {
-    for(let i=1; i <=numProfiles; i++) {
-        deployPresets(i);
+function deployPresets() {
+    
+    for(i in instances) {
+        let uphammer = instances[i];
+        uphammer.start();    
     }
 }
 
-deployAll(9);
+function testSeparationOfState(instances) {
+    let lsp1 = instances[0].state.lspFactory;
+    for(i in instances) {
+        if(lsp1 === instances[i].state.lspFactory) {
+            console.log(`[!] Instance 0 and ${i} share the same state`);
+        }
+    }
+}
+
+function main(numProfiles) {
+    for(let i=1; i <=numProfiles; i++) {
+        configurePresets(i);
+    }
+    // testSeparationOfState(instances);
+    deployPresets();
+}
+
+main(30);

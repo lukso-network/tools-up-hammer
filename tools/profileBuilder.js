@@ -110,7 +110,8 @@ async function main() {
     let profiles = [];
 
     let funder = web3.eth.accounts.privateKeyToAccount(privateKey);
-
+    let balance = await web3.eth.getBalance(funder.address);
+    console.log(`[+] Funder ${funder.address} has balance ${balance}`)
     for(let i=1; i<=numberOfAccounts; i++) {
         let profile = await createProfile(i);
         profiles.push(profile);

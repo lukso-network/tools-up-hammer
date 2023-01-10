@@ -11,7 +11,7 @@ const crypto = require('crypto');
 const delay = require('await-delay');
 
 const {initUP, randomIndex } = require('./lib');
-const actions = require('./actions');
+const { UPActions } = require('./actions');
 const config = require("./config.json");
 const utils = require("./utils");
 
@@ -57,30 +57,34 @@ XHR.prototype._onHttpRequestError = function (request, error) {
 
 
 
-class UPHammer {
+class UPHammer extends UPActions {
     // the functions randomly selected in the deploy loop cycle
     deploy_actions = [
-        actions.loop_deployUP,
-        actions.loop_deployLSP7,
-        actions.loop_deployLSP8,
+        this.loop_deployUP.bind(this),
+        this.loop_deployLSP7.bind(this),
+        this.loop_deployLSP8.bind(this),
     ]
     // the functions randomly selected in the transfer loop cycle
     transfer_actions = [
-        actions.loop_transferLSP7,
-        actions.loop_transferAllLSP7,
-        actions.loop_transferLSP8,
-        actions.loop_mintLSP7,
-        actions.loop_mintLSP8,
+        this.loop_transferLSP7.bind(this),
+        this.loop_transferAllLSP7.bind(this),
+        this.loop_transferLSP8.bind(this),
+        this.loop_mintLSP7.bind(this),
+        this.loop_mintLSP8.bind(this),
     ];
 
     constructor(user_config, profile_or_user_presets) {
+        super();
         // merge config
         this.config = config;
         this.mergeConfig(user_config);
 
+        this.log = log.bind(this);
+        this.warn = warn.bind(this);
+
         this.provider = this.config.provider; 
-        log(`Provider is ${this.provider}`, INFO);
-        log(`ChainId is ${this.config.chainId}`, INFO);
+        this.log(`Provider is ${this.provider}`, INFO);
+        this.log(`ChainId is ${this.config.chainId}`, INFO);
         // web3 is used for transferring and minting, not deployments
         this.web3 = new Web3(this.provider, this.config.wallets.transfer.privateKey);
         if(this.config.wsProvider) {
@@ -112,7 +116,7 @@ class UPHammer {
         // store presets in config if they are preset
         this.config.presets = user_presets ? user_presets : {};
 
-        this.state = {...state,
+        this.state = {...this.state,
             web3: this.web3,
             ws: this.ws,
             lspFactory: this.lspFactory,
@@ -142,7 +146,7 @@ class UPHammer {
 
         if(!initialized) {
             for(let i=0; i < num_to_deploy; i++) {
-                await initUP(this.state);
+                await this.initUP(this.state);
             }
         }
     }
@@ -155,8 +159,8 @@ class UPHammer {
         for(let i=0; i< presetUPs.length; i++) {
             let erc725_address = presetUPs[i].ERC725_ADDRESS;
             let km_address = presetUPs[i].KEYMANAGER_ADDRESS;
-            log(`ERC725 address:     ${erc725_address}`, INFO, this.state);
-            log(`KeyManager address: ${km_address}`, INFO, this.state);
+            this.log(`ERC725 address:     ${erc725_address}`, INFO, this.state);
+            this.log(`KeyManager address: ${km_address}`, INFO, this.state);
             let erc725 = new this.state.web3.eth.Contract(UniversalProfile.abi, erc725_address);
             let km = new this.state.web3.eth.Contract(KeyManager.abi, km_address);
             this.state.up[erc725_address] = {
@@ -177,7 +181,7 @@ class UPHammer {
             } catch(e) {
                 console.log(e);
             }
-            log(`LSP7 address:       ${lsp7_asset._address}`, INFO, this.state);
+            this.log(`LSP7 address:       ${lsp7_asset._address}`, INFO, this.state);
             this.state.lsp7.addresses[lsp7_asset._address] = {
                 owner: erc725_address
             }
@@ -191,7 +195,7 @@ class UPHammer {
             let totalSupply = await lsp8_asset.methods.totalSupply().call();
             let currentId = totalSupply;
 
-            log(`LSP8 address:       ${lsp8_asset._address}`, INFO, this.state);
+            this.log(`LSP8 address:       ${lsp8_asset._address}`, INFO, this.state);
         
             this.state.lsp8.addresses[lsp8_asset._address] = {
                 owner: erc725_address,
@@ -228,14 +232,14 @@ class UPHammer {
         while(this.continueDeployments()) {
             let next = randomIndex(this.deploy_actions); 
             try {
-                await this.deploy_actions[next](this.state);
+                await this.deploy_actions[next]();
                 await delay(this.config.deploymentDelay);
             } catch (e) {
-                warn(`Error during ${this.deploy_actions[next].name}`, INFO);
+                this.warn(`Error during ${this.deploy_actions[next].name}`, INFO);
                 console.log(e);
             }
         }
-        log('Finished deployments', INFO);
+        this.log('Finished deployments', INFO);
     }
 
     doWebSocket = function() {
@@ -268,7 +272,7 @@ class UPHammer {
                     this.transfer_actions[next](this.state);    
                 }
             } catch(e) {
-                warn(`error during ${this.transfer_actions[next].name}`, INFO);
+                this.warn(`error during ${this.transfer_actions[next].name}`, INFO);
             }
 
             // calculate the delay
@@ -368,15 +372,15 @@ class UPHammer {
      * Checks the balances of both deploy and transfer accounts and aborts if both are not funded
      */
     checkBalance = async function (wallet) {
-        log(`Checking ${wallet} balance...`, QUIET, this.state);
+        this.log(`Checking ${wallet} balance...`, QUIET, this.state);
         if(this.config.wallets[wallet] === undefined) {
             warn(`${wallet} wallet is not properly configured`, QUIET, this.state);
         }
         let address = this.config.wallets[wallet].address;
         let balance = await this.web3.eth.getBalance(address);
-        log(`Balance: ${balance}`, QUIET, this.state);
+        this.log(`Balance: ${balance}`, QUIET, this.state);
         if (balance === '0') {
-            warn(`[!] Go get some gas for ${this.config.wallets[wallet].address}`, QUIET, this.state);
+            this.warn(`Go get some gas for ${this.config.wallets[wallet].address}`, QUIET, this.state);
             return false;
         }
         return true;
@@ -395,7 +399,7 @@ class UPHammer {
                 this.state.stallResetCycles = 0;
             }
             if (this.state.stallResetCycles > config.stallReset.cycles) {
-                warn(`UPhammer stalled. exiting...`, MONITOR);
+                this.warn(`UPhammer stalled. exiting...`, MONITOR);
                 process.exit();
             }
             utils.monitorCycle(this.state);
