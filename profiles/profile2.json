@@ -9,5 +9,6 @@
             "privateKey": "0x4b2afbdf39d0c6a40c954444e2229f7f6b9b5b30010c07db0602de5b4431d5a8"
         }
     },
-    "presetsFile": "./presets/presets2.json"
+    "presetsFile": "./presets/presets2.json",
+    "locked": true
 }

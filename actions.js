@@ -75,9 +75,8 @@ async function loop_deployLSP7(state) {
         }
         
     }
-    
-
 }
+
 async function loop_deployLSP8(state) {
     let config = state.config;
     if(Object.keys(state.lsp8.addresses).length < config.deployLimits.lsp8) {
