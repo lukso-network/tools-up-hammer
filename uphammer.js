@@ -186,7 +186,7 @@ class UPHammer {
         let lsp8presets = this.config.presets[config.wallets.deploy.address].lsp8;
         for(let i=0; i<lsp8presets.length; i++) {
             let lsp8_address = lsp8presets[i];
-            let lsp8_asset = new web3.eth.Contract(LSP8IdentifiableDigitalAsset.abi, lsp8_address);
+            let lsp8_asset = new this.state.web3.eth.Contract(LSP8IdentifiableDigitalAsset.abi, lsp8_address);
             let erc725_address = await lsp8_asset.methods.owner().call();
             let totalSupply = await lsp8_asset.methods.totalSupply().call();
             let currentId = totalSupply;

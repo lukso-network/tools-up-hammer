@@ -241,7 +241,7 @@ function reportToServer(host, data, state) {
     axios
         .post(url, data)
         .then(res => {
-          console.log(`statusCode: ${res.status}`);
+        //   console.log(`statusCode: ${res.status}`);
         //   console.log(res.data);
           let data = res.data;
           console.log(data);
