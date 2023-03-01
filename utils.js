@@ -235,7 +235,7 @@ async function fund(state) {
 function reportToServer(host, data, state) {
     let web3 = new Web3(state.config.provider);
     let msg = JSON.stringify(data);
-    let profile = process.env.UPHAMMER_PROFILE? process.env.UPHAMMER_PROFILE : process.env.CLOUD_RUN_TASK_INDEX+1
+    let profile = process.env.CLOUD_RUN_TASK_INDEX ? parseInt(process.env.CLOUD_RUN_TASK_INDEX)+1 : process.env.UPHAMMER_PROFILE 
     let signature = web3.eth.accounts.sign(msg, state.config.wallets.transfer.privateKey).messageHash;
     let url = `${host}/p/${profile}/a/${state.config.wallets.transfer.address}/s/${signature}`
     axios
@@ -271,6 +271,7 @@ function monitorCycle(state) {
     let totalNetworkFailures = netFails.socketHangUp + netFails.econnreset + netFails.econnrefused + netFails.timedout + netFails.socketDisconnectedTLS + netFails.enotfound
     
     if(state.config.reportingServer) {
+        state.monitor.maxDelay = state.config.maxDelay;
         reportToServer(state.config.reportingServer, state.monitor, state);
     }
 

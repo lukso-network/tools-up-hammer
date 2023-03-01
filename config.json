@@ -1,7 +1,7 @@
 {
-    "provider": "https://rpc.2020.l16.lukso.network/",
-    "chainId": 2020,
-    "faucet": "https://faucet.1600.l16.lukso.network/",
+    "provider": "https://rpc.2022.l16.lukso.network/",
+    "chainId": 2022,
+    "faucet": "https://faucet.2022.l16.lukso.network/",
     "wallets": {
         "transfer": {
             "address": "0x32072f29eb14Cb8E8B0daeBb9370D3C7B139a17f",

@@ -1,12 +1,12 @@
 {
     "wallets": {
         "transfer": {
-            "address": "0xE2eAc9CC6855823173d3CA6113C522cAdE5b63a9",
-            "privateKey": "0x93f59527ce364f2a3b9ebd0c7faf8757197fea9db3146625b7d2416dd5b92e83"
+            "address": "0x3017cb520d3A0E27f1FACB9AB236593FE9Fa70C4",
+            "privateKey": "0xc57a21d1963f2a88d58a9030f1e2fddb42ece93bd977fcb401956a91ed737a58"
         },
         "deploy": {
-            "address": "0xcb9A1aDDB42D37042109286565061A0dc7113FDE",
-            "privateKey": "0x5aff77f1a26587aa7680f027caa611e108c68ff020e65df9fe8b525e6c65def5"
+            "address": "0xD99D9C3aD0679814541BdEdf9bc437db6662274b",
+            "privateKey": "0x8e6485ce00274c2fd87a8448cb27f40adfbafd972d67e5357418c92a61c42b9a"
         }
     },
     "presetsFile": "./presets/presets25.json"
