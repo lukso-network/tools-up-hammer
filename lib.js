@@ -253,6 +253,7 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         .on('receipt', function(receipt){
             log(`Minted tokens ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `, INFO);
             state[type.toLowerCase()].transferable = true;
+            delete state.pendingTxs[receipt.transactionHash];
             state.monitor.tx.receipts.mints++;
             if(state.config.logTx) {
                 logTx(state.config.txTransactionLog, receipt.transactionHash, nonce);
@@ -317,6 +318,7 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         })
         .on('receipt', function(receipt){
             log(`Transfer complete ${receipt.transactionHash} Nonce ${nonce}`, INFO);
+            delete state.pendingTxs[receipt.transactionHash];
             if(state.config.logTx) {
                 logTx(state.config.txTransactionLog, receipt.transactionHash, nonce);
             }

@@ -23,6 +23,7 @@ let state = {
     config: null,
     backoff: 0,
     stallResetCycles: 0,
+    underPricedNonceMultiplier: {},
     monitor: resetMonitor()
 }
 

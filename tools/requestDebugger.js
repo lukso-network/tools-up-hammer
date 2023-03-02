@@ -24,7 +24,7 @@ async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice, profileNum ) {
 
         up.km.methods.execute(abiPayload).send({
             from: EOA.transfer.address, 
-            gas: 5_000_000,
+            gas: 5_000_001,
             gasPrice,
             nonce
         })
@@ -106,8 +106,8 @@ async function singleTx(profileNum) {
     };
 
     let gasPrice = config.defaultGasPrice;
-    gasPrice = parseInt(gasPrice) + parseInt(gasPrice);
-    // gasPrice = parseInt(gasPrice) + 1;
+    // gasPrice = parseInt(gasPrice) + parseInt(gasPrice);
+    gasPrice = parseInt(gasPrice) + 10;
 
     await mint(lsp7, up, 1, EOA, nonce, gasPrice, profileNum);
 }
@@ -124,5 +124,5 @@ function debugAll(numProfiles) {
     }
 }
 
-singleTx(4);
-// debugAll([26,30]);
+singleTx(2);
+// debugAll([1,10]);

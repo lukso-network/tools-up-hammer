@@ -23,10 +23,8 @@ function nextNonce(state) {
     } else if(state.incrementGasPrice.length > 0) {
         let next = state.incrementGasPrice.shift();
         nonce = next.nonce;
-        if(!next.gasPrice) {
-            console.log(next.gasPrice);
-        }
-        gasPrice = parseInt(next.gasPrice) + parseInt(state.config.gasIncrement);
+        let multiplier = state.underPricedNonceMultiplier[nonce] ? state.underPricedNonceMultiplier[nonce] : 1
+        gasPrice = parseInt(next.gasPrice) + (parseInt(state.config.gasIncrement) * multiplier);
         gasPrice = gasPrice.toString();
         
         state.monitor.incrementGasPrice = {
@@ -69,6 +67,14 @@ function addNonceToDroppedNoncesIfNotPresent(state, nonce) {
 // already has a TX using that nonce, and we don't actually have to create new TXs with that nonce
 // so processing and replaying is a waste of resources
 function replayAndIncrementGasPrice(state, nonce, gasPrice) {
+    // have we seen this nonce before?
+    if(!state.underPricedNonceMultiplier[nonce]) {
+        state.underPricedNonceMultiplier[nonce] = 1;
+    } else {
+        state.underPricedNonceMultiplier[nonce] *= 10;
+    }
+
+
     // first check if the nonce is already here
     // if it is, update the gasPrice
     for(let i=0; i<state.incrementGasPrice.length; i++) {

@@ -19,7 +19,7 @@
     },
     "maxDelay": 0,
     "deploymentDelay": 1000,
-    "nonceCheckDelay": 10000,
+    "nonceCheckDelay": 5000,
     "webSocketDelay": 100,
     "monitorDelay": 5000,
     "faucetDelayMinutes": 30,

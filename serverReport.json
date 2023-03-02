@@ -1,0 +1,42 @@
+{
+    "usage": "80.2",
+    "monitor": {
+        "droppedNonces": {
+            "amount": 0
+        },
+        "incrementGasPrice": {
+            "amount": 0
+        },
+        "tx": {
+            "loop": 8,
+            "sent": 9,
+            "checkPending": 0,
+            "receipts": {
+                "transfers": 0,
+                "mints": 0,
+                "reverts": 0
+            },
+            "mint": 3,
+            "attemptedTx": 3,
+            "attemptedMint": 5,
+            "hash": 2,
+            "errors": {
+                "underpriced": 0,
+                "transactionReceipt": 0,
+                "invalidJSON": 0,
+                "nonceTooLow": 0,
+                "txNotMined": 0,
+                "misc": 0
+            }
+        },
+        "networkFailures": {
+            "econnreset": 0,
+            "econnrefused": 0,
+            "enotfound": 0,
+            "socketDisconnectedTLS": 0,
+            "socketHangUp": 0,
+            "timedout": 0
+        },
+        "maxDelay": 50
+    }
+}

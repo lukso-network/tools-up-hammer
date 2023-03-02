@@ -335,27 +335,24 @@ class UPHammer {
     
         while(true) {
             // we want to check on what the chain thinks our nonce is
-            // if state.nonce diverges too far from what the chain says our nonce is
-            // it is possible that a nonce got lost and was not recovered by our checkPendingTx loop
-            // the value of state.config.nonceDivergenceLimit might require some thought. 
-            // If its too low we will introduce `replacement errors`. If its too high, the script might get
-            // stuck until the nonce is added
-            this.web3.eth.getTransactionCount(this.config.wallets.transfer.address)
-            .then((nonceFromChain) => {
+            // current check is simple. We are in a timed loop set by nonceCheckDelay
+            // if we see the same nonce twice from the chain, we add that nonce to dropped nonces
+            // so basically the timer needs to be adjusted so we should see the nonce increment 
+            // between loops
+            let nonceFromChain = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address)
+            
+            if(this.state.nonceFromChain === nonceFromChain) {
+                utils.addNonceToDroppedNoncesIfNotPresent(this.state, nonceFromChain);
+            } else {
                 this.state.nonceFromChain = nonceFromChain;
-                let threshold = this.state.config.nonceDivergenceLimit;
-                // state.nonce is likely higher than nonceFromChain
-                // if it is not, then we are likely "behind" and in a recovering state
-                let divergence = this.state.nonce - nonceFromChain; 
-                
-                if(divergence > threshold) {
-                    utils.addNonceToDroppedNoncesIfNotPresent(this.state, nonceFromChain);
-                }
-            })
-            .catch((e) => {
-                console.log(e);
-                utils.errorHandler(this.state,e);
-            })
+            }
+               
+            // }
+            // )
+            // .catch((e) => {
+            //     console.log(e);
+            //     utils.errorHandler(this.state,e);
+            // })
             if(config.checkPendingTxs) {
                 await this.checkPendingTx();
             }
@@ -443,16 +440,16 @@ class UPHammer {
      * Because deployment loop relies heavily on await, it is put last. This seemed to help 
      */
     start = async function () {
-        // let deploy_balance = await this.checkBalance("deploy");
-        // let transfer_balance = await this.checkBalance("transfer");
-        // if(!deploy_balance || !transfer_balance) {
-        //     process.exit();
-        // }
-        // this.state.balance = transfer_balance;
-        // this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
-        // let totalPending = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
-        // log(`Transfer Wallet Nonce is ${this.state.nonce}`, MONITOR, this.state);
-        // log(`Total Pending is ${totalPending}`, MONITOR, this.state);
+        let deploy_balance = await this.checkBalance("deploy");
+        let transfer_balance = await this.checkBalance("transfer");
+        if(!deploy_balance || !transfer_balance) {
+            process.exit();
+        }
+        this.state.balance = transfer_balance;
+        this.state.nonce = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address);
+        let totalPending = await this.web3.eth.getTransactionCount(this.config.wallets.transfer.address, "pending");
+        log(`Transfer Wallet Nonce is ${this.state.nonce}`, MONITOR, this.state);
+        log(`Total Pending is ${totalPending}`, MONITOR, this.state);
         await this.init(this.config.initialUPs);
         // console.log(state);
         
