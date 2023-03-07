@@ -246,7 +246,10 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
         })
         .on('transactionHash', function(hash){
             log(`[+] Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.pendingTxs[hash] = nonce;
+            if(state.config.checkPendingTxs) {
+                state.pendingTxs[hash] = nonce;
+            }
+            
             state.monitor.tx.hash++;
             accountForNonce(state, nonce);
         })
@@ -312,7 +315,9 @@ async function transfer(lsp, _from, _to, amount, up, state, type ) {
         })
         .on('transactionHash', function(hash){
             log(`Tx: ${hash} Nonce: ${nonce}`, VERBOSE);
-            state.pendingTxs[hash] = nonce;
+            if(state.config.checkPendingTxs) {
+                state.pendingTxs[hash] = nonce;
+            }
             state.monitor.tx.hash++;
             accountForNonce(state, nonce);
         })

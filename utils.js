@@ -146,6 +146,9 @@ function errorHandler(state, error, nonce, receipt, gasPrice) {
         state.monitor.tx.receipts.reverts++;
     } else if(error.toString().includes("Transaction was not mined")) {
         state.monitor.tx.errors.txNotMined++;
+    } else if(error.toString().includes("already known")) {
+        state.monitor.tx.errors.alreadyKnown++;
+        replayAndIncrementGasPrice(state, nonce, gasPrice);
     } else {
         warn(error, MONITOR); // setting this to monitor so we can see it in monitor mode
         state.monitor.tx.errors.misc++;
@@ -278,7 +281,8 @@ function monitorCycle(state) {
     
     if(state.config.reportingServer) {
         state.monitor.maxDelay = state.config.maxDelay;
-        reportToServer(state.config.reportingServer, state.monitor, state);
+        let server = process.env.UPHAMMER_REPORTING_SERVER ? process.env.UPHAMMER_REPORTING_SERVER : state.config.reportingServer
+        reportToServer(server, state.monitor, state);
     }
 
     if(state.config.runServer) {

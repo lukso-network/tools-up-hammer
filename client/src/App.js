@@ -19,12 +19,12 @@ function App() {
           Learn React
         </a> */}
       {/* </header> */}
-      <UPInstance instanceNumber={23}></UPInstance>
-      <UPInstance instanceNumber={1}></UPInstance>
+      <UPInstance instanceNumber={5}></UPInstance>
+      {/* <UPInstance instanceNumber={1}></UPInstance>
       <UPInstance instanceNumber={19}></UPInstance>
       <UPInstance instanceNumber={9}></UPInstance>
       <UPInstance instanceNumber={2}></UPInstance>
-      
+       */}
     </div>
   );
 }

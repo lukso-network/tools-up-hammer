@@ -347,12 +347,6 @@ class UPHammer {
                 this.state.nonceFromChain = nonceFromChain;
             }
                
-            // }
-            // )
-            // .catch((e) => {
-            //     console.log(e);
-            //     utils.errorHandler(this.state,e);
-            // })
             if(config.checkPendingTxs) {
                 await this.checkPendingTx();
             }
