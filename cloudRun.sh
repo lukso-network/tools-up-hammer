@@ -8,6 +8,11 @@
 # docker tag web-image gcr.io/my-project/web-site:v1.5
 # docker tag uphammer gcr.io/uphammer-368613/uphammer
 
+# THIS
+# docker build -t uphammer .
+# docker tag uphammer gcr.io/uphammer-368613/uphammer
+# docker push gcr.io/uphammer-368613/uphammer
+
 # gcloud beta run jobs create JOB_NAME --image IMAGE_URL OPTIONS
 # gcloud beta run jobs create uphammer --image gcr.io/uphammer-368613/uphammer
 

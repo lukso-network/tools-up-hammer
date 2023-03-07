@@ -17,7 +17,7 @@
         "lsp7": 50,
         "lsp8": 50
     },
-    "maxDelay": 100,
+    "maxDelay": 10,
     "deploymentDelay": 1000,
     "nonceCheckDelay": 5000,
     "webSocketDelay": 100,

@@ -17,7 +17,34 @@ function getAddresses(profiles) {
     return addresses;
 }
 
+async function fundSingleAccount(funder, recipient, amount, web3) {
+    const nonce = await web3.eth.getTransactionCount(funder.address); 
+
+    const transaction = {
+     'to': recipient, 
+     'value': amount,
+     'gas': 30000,
+     'nonce': nonce,
+    };
+   
+    const signedTx = await web3.eth.accounts.signTransaction(transaction, funder.privateKey);
+    try {
+        await web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
+            if (!error) {
+                console.log(`[+] Funded ${recipient} ${amount}`);
+            } else {
+                console.log("[!] Error", error)
+            }
+       });
+    } catch(e) {
+        console.log(`[!] Error ${e}`)
+        return recipient
+    }
+    
+}
+
 module.exports = {
     getProfiles,
-    getAddresses
+    getAddresses,
+    fundSingleAccount
 }

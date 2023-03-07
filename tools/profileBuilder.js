@@ -45,31 +45,7 @@ async function createProfile(i) {
     return config;
 }
 
-async function fundSingleAccount(funder, recipient, amount) {
-    const nonce = await web3.eth.getTransactionCount(funder.address); 
 
-    const transaction = {
-     'to': recipient, 
-     'value': amount,
-     'gas': 30000,
-     'nonce': nonce,
-    };
-   
-    const signedTx = await web3.eth.accounts.signTransaction(transaction, funder.privateKey);
-    try {
-        await web3.eth.sendSignedTransaction(signedTx.rawTransaction, function(error, hash) {
-            if (!error) {
-                console.log(`[+] Funded ${recipient} ${amount}`);
-            } else {
-                console.log("[!] Error", error)
-            }
-       });
-    } catch(e) {
-        console.log(`[!] Error ${e}`)
-        return recipient
-    }
-    
-}
 
 async function fundProfiles(funder, presets, amountToFund) {
     if(!amountToFund) {
@@ -121,3 +97,7 @@ async function main() {
 }
 
 main();
+
+module.exports = {
+    fundSingleAccount
+}
