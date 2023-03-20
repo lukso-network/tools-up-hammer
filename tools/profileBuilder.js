@@ -2,6 +2,7 @@
 const fs = require("fs");
 const Web3 = require("web3");
 const config = require("../config.json");
+const { fundSingleAccount } = require("../helpers");
 
 const web3 = new Web3(config.provider);
 
@@ -64,7 +65,7 @@ async function fundProfiles(funder, presets, amountToFund) {
 
     recipients = presets.flatMap((w) => [w.wallets.transfer.address, w.wallets.deploy.address])
     for(i in recipients) {
-        let failed = await fundSingleAccount (funder, recipients[i], amountPerRecipient);
+        let failed = await fundSingleAccount (funder, recipients[i], amountPerRecipient, web3);
         if (failed) {
             recipients.push(failed);
         }
