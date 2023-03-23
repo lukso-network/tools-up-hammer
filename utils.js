@@ -241,7 +241,21 @@ async function fund(state) {
         });
 }
 
+function processC2CData(state, data) {
+    if(data) {
+        state.c2c.pause = data.pause ? data.pause : false
+    }
+    
+}
+
+function extraMonitorData(data, state) {
+    data.maxDelay = state.config.maxDelay;
+    data.c2c = state.c2c;
+    return data;
+}
+
 function reportToServer(host, data, state) {
+    data = extraMonitorData(data, state) 
     let web3 = new Web3(state.config.provider);
     let msg = JSON.stringify(data);
     let profile = process.env.CLOUD_RUN_TASK_INDEX ? parseInt(process.env.CLOUD_RUN_TASK_INDEX)+1 : process.env.UPHAMMER_PROFILE 
@@ -254,6 +268,7 @@ function reportToServer(host, data, state) {
         //   console.log(res.data);
           let data = res.data;
           console.log(data);
+          processC2CData(state, data);
         })
         .catch(error => {
           console.error(error);
@@ -280,7 +295,6 @@ function monitorCycle(state) {
     let totalNetworkFailures = netFails.socketHangUp + netFails.econnreset + netFails.econnrefused + netFails.timedout + netFails.socketDisconnectedTLS + netFails.enotfound
     
     if(state.config.reportingServer) {
-        state.monitor.maxDelay = state.config.maxDelay;
         let server = process.env.UPHAMMER_REPORTING_SERVER ? process.env.UPHAMMER_REPORTING_SERVER : state.config.reportingServer
         reportToServer(server, state.monitor, state);
     }

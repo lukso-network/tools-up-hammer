@@ -16,7 +16,8 @@ const app = express();
 const web3 = new Web3(config.provider);
 
 var profiles = {}
-var counter = 0;
+var commands = {}
+
 
 const profileDir = "./profiles/";
 let localProfiles = getProfiles(profileDir);
@@ -32,8 +33,9 @@ app.use(cors());
 app.post('/p/:profileId/a/:address/s/:signature', jsonParser, (req, res) => {
   if(addresses.includes(req.params.address)) {
     // if(web3.eth.accounts.recover(req.body, req.params.signature)) {
-      profiles[req.params.profileId] = req.body;
-      res.send(200);
+      let timestamp = Date.now();
+      profiles[req.params.profileId] = {...req.body, timestamp };
+      res.send(commands[req.params.profileId]);
     // } else {
     //   console.log('Signature incorrect');
     //   res.send(401);
@@ -50,17 +52,14 @@ app.get('/p/:profileId/', (req, res) => {
   res.send(profiles[req.params.profileId]);
 })
 
-app.get('/i/:addme/', (req, res) => {
-  console.log(req.params.addme)
-  counter += parseInt(req.params.addme);
-  res.send(`Counter is ${counter}`);
-})
-
-app.get('/i/', (req, res) => {
-  res.send(`Counter is ${counter}`);
+// this needs some sort of authentication
+app.post('/c/:profileId/', jsonParser, (req, res) => {
+  console.log(req.body);
+  commands[req.params.profileId] = req.body;
 })
 
 const port = parseInt(process.env.PORT) || 8080;
+
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`Listening on port ${port}`)
 })

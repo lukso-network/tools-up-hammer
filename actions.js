@@ -220,11 +220,11 @@ async function loop_transferLSP8(state) {
     try {
         state.monitor.tx.attemptedTx++;
         if(lsp8.transferable) {
-            let totalSupply = "0";
+            // let totalSupply = "0";
             let lsp8_contract, lsp8_address;
             let tokenId, tokenIdBytes;
-            let owner;
-            let keepSearching = true;
+            // let owner;
+            // let keepSearching = true;
         
             lsp8_address = randomKey(lsp8.addresses);
             lsp8_contract = new web3.eth.Contract(LSP8Mintable.abi, lsp8_address);

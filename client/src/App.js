@@ -2,38 +2,38 @@ import logo from './logo.svg';
 import './App.css';
 import UPInstance from './components/upinstance.component';
 
+function buildColumn(n, offset=0) {
+  let ups = [];
+  
+  for(let i=1; i<=n; i++) {
+    let className = "UPStyle";
+    let altCol = (offset/10) % 2
+    let altCheck = 0;
+    if (altCol != 0) {
+      altCheck = 1;
+    } 
+    if (i%2 != altCheck) {
+      className += " alt";
+    } 
+    console.log(className)
+    ups.push(<div className={className}><UPInstance  instanceNumber={i+offset}></UPInstance></div>)
+  }
+  
+  return ups;
+}
+
 function App() {
   return (
     <div className="App">
-      {/* <header className="App-header"> */}
-        {/* <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a> */}
-      {/* </header> */}
-      <UPInstance instanceNumber={1}></UPInstance>
-      <UPInstance instanceNumber={2}></UPInstance>
-      <UPInstance instanceNumber={3}></UPInstance>
-      <UPInstance instanceNumber={4}></UPInstance>
-      <UPInstance instanceNumber={5}></UPInstance>
-      <UPInstance instanceNumber={6}></UPInstance>
-      <UPInstance instanceNumber={7}></UPInstance>
-      <UPInstance instanceNumber={8}></UPInstance>
-      <UPInstance instanceNumber={9}></UPInstance>
-      <UPInstance instanceNumber={10}></UPInstance>
-      {/* <UPInstance instanceNumber={1}></UPInstance>
-      <UPInstance instanceNumber={19}></UPInstance>
-      <UPInstance instanceNumber={9}></UPInstance>
-      <UPInstance instanceNumber={2}></UPInstance>
-       */}
+      <div class="colLeft">
+        { buildColumn(10, 0) }
+      </div>
+      <div class="colMid">
+        { buildColumn(10, 10) }
+      </div>
+      <div class="colRight">
+        { buildColumn(10, 20) }
+      </div>
     </div>
   );
 }

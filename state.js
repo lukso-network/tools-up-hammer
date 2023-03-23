@@ -24,7 +24,10 @@ let state = {
     backoff: 0,
     stallResetCycles: 0,
     underPricedNonceMultiplier: {},
-    monitor: resetMonitor()
+    monitor: resetMonitor(),
+    c2c: {
+        pause: false
+    }
 }
 
 module.exports = {

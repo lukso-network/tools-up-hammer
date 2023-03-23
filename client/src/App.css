@@ -1,5 +1,5 @@
 .App {
-  text-align: center;
+  text-align: left;
 }
 
 .App-logo {
@@ -35,4 +35,27 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.UPStyle {
+  margin: 10px;
+}
+
+.alt {
+  background-color: lightgrey;
+}
+
+.colLeft {
+  position: absolute;
+  left: 0px;
+}
+
+.colMid {
+  position: absolute;
+  left: 500px;
+}
+
+.colRight {
+  position: absolute;
+  left: 1000px;
 }

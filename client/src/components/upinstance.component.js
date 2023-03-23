@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React from 'react';
 import TX from './tx.component.js';
 import ERRORS from './errors.component';
 import NETFAILURES from './netfailures.component';
@@ -11,7 +11,8 @@ class UPInstance extends React.Component {
         this.state = {
             isLoaded: false,
             data: {},
-            instanceNumber: props.instanceNumber
+            instanceNumber: props.instanceNumber,
+            pause: false
         };
     }
 
@@ -42,6 +43,15 @@ class UPInstance extends React.Component {
     componentDidMount() {
         
         this.fetchLatest();
+    }
+
+    handlePause() {
+        this.state.pause = !this.state.pause;
+        let xhr = new XMLHttpRequest();
+        xhr.open('POST', `http://localhost:8080/c/${this.state.instanceNumber}/`);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        
+        xhr.send(JSON.stringify({ pause: this.state.pause }));
     }
 
     render() {
@@ -86,11 +96,18 @@ class UPInstance extends React.Component {
             )
         }
         if (isLoaded) {
+            let now = new Date();
+            let lastSeen = (now.getTime() - data.timestamp) / 1000;
+            let isPaused = data.c2c? data.c2c.paused : false;
+            let paused = 'Running';
+            if(isPaused) {
+                paused = 'Paused';
+            }
             return (
 
                 <div>
-                    <p>HELLO {this.props.instanceNumber}</p>
-                    
+                    <p>{paused} {this.props.instanceNumber} {data.maxDelay} Last Seen: {lastSeen} sec ago</p>
+                    <input type="checkbox" onChange={this.handlePause.bind(this)}/> 
                     <TX data={data.tx}></TX>
                     <ERRORS data={data.tx.errors}></ERRORS>
                     <NETFAILURES data={data.networkFailures}></NETFAILURES>

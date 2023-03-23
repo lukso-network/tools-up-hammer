@@ -64,19 +64,18 @@ async function singleTx(profileNum) {
     let presets = JSON.parse(rawPresets);
     let EOA = profile.wallets;
     
+    let wallet = EOA.transfer;
 
-    // let balance = await web3.eth.getBalance("0xa69eb1dc130fdf0d33a6f64e6fb4bb0562162b0a");
-    
-    // console.log(balance);
-    // balance = await web3.eth.getBalance("0xff50407857a06a5163007c58304e3f0446cdc837");
-    // console.log(balance);
-    // balance = await web3.eth.getBalance("0x79b18703141c09d19fa78fdd1d24a0a757a1e66b");
-    // console.log(balance);
-    
-    web3.eth.accounts.wallet.add(EOA.transfer.privateKey);
+    let privateKey = wallet.privateKey;
+    let address = wallet.address;
+    console.log(privateKey);
 
-    console.log(`[+] (${profileNum}) Transfer address is ${EOA.transfer.address}`)
-    let nonce = await web3.eth.getTransactionCount(EOA.transfer.address);
+    balance = await web3.eth.getBalance(address);
+    console.log(balance);
+    web3.eth.accounts.wallet.add(privateKey);
+
+    console.log(`[+] (${profileNum}) Transfer address is ${address}`)
+    let nonce = await web3.eth.getTransactionCount(address);
     console.log(`[+] (${profileNum}) Nonce is ${nonce}`);
 
     let lsp7_address= presets[EOA.deploy.address]['lsp7'][0];
@@ -106,8 +105,8 @@ async function singleTx(profileNum) {
     };
 
     let gasPrice = config.defaultGasPrice;
-    // gasPrice = parseInt(gasPrice) + parseInt(gasPrice);
-    gasPrice = parseInt(gasPrice) + 10;
+    gasPrice = parseInt(gasPrice) + parseInt(gasPrice);
+    // gasPrice = parseInt(gasPrice) + 10;
 
     await mint(lsp7, up, 1, EOA, nonce, gasPrice, profileNum);
 }
@@ -124,5 +123,5 @@ function debugAll(numProfiles) {
     }
 }
 
-singleTx(2);
+singleTx(1);
 // debugAll([1,10]);

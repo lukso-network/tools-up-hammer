@@ -261,32 +261,37 @@ class UPHammer {
      */
     runTransfers = async function () {
         while(true) {
-
-            let next = randomIndex(this.transfer_actions); 
-            try {
-                if(Object.keys(this.state.up).length > 0) { 
-                    this.transfer_actions[next](this.state);    
+            if(!this.state.c2c.pause) {
+                let next = randomIndex(this.transfer_actions); 
+                try {
+                    if(Object.keys(this.state.up).length > 0) { 
+                        this.transfer_actions[next](this.state);    
+                    }
+                } catch(e) {
+                    warn(`error during ${this.transfer_actions[next].name}`, INFO);
                 }
-            } catch(e) {
-                warn(`error during ${this.transfer_actions[next].name}`, INFO);
-            }
-
-            // calculate the delay
-            let timeToDelay;
-            // crypto.randomInt cannot handle floats, so only select randomly if we are at 1 or above
-            if(this.config.maxDelay >= 1) {
-                timeToDelay = crypto.randomInt(this.config.maxDelay) + this.state.backoff;
-            } else if(this.config.maxDelay > 0) {
-                // if we are between 0 and 1, just use Math.random
-                timeToDelay = Math.random(this.config.maxDelay) + this.state.backoff;
+    
+                // calculate the delay
+                let timeToDelay;
+                // crypto.randomInt cannot handle floats, so only select randomly if we are at 1 or above
+                if(this.config.maxDelay >= 1) {
+                    timeToDelay = crypto.randomInt(this.config.maxDelay) + this.state.backoff;
+                } else if(this.config.maxDelay > 0) {
+                    // if we are between 0 and 1, just use Math.random
+                    timeToDelay = Math.random(this.config.maxDelay) + this.state.backoff;
+                } else {
+                    timeToDelay = 0 + this.state.backoff;
+                }
+                
+                // apply backoff if it exists for this cycle
+                this.state.backoff > 0 ? this.state.backoff-- : this.state.backoff = 0;
+                this.state.monitor.tx.loop++;
+                await delay(timeToDelay);
             } else {
-                timeToDelay = 0 + this.state.backoff;
+                await delay(this.config.maxDelay);
             }
             
-            // apply backoff if it exists for this cycle
-            this.state.backoff > 0 ? this.state.backoff-- : this.state.backoff = 0;
-            this.state.monitor.tx.loop++;
-            await delay(timeToDelay);
+            
         }
     }
 
@@ -379,16 +384,20 @@ class UPHammer {
     monitor = async function() {
         while(true) {
             await delay(this.config.monitorDelay);
-            let loop = this.state.monitor.tx.loop;
-            if (loop < config.stallReset.threshold) {
-                this.state.stallResetCycles++;
-            } else {
-                this.state.stallResetCycles = 0;
+            // check to see if the tool has stalled, but only if not paused
+            if(!this.state.c2c.pause) {
+                let loop = this.state.monitor.tx.loop;
+                if (loop < config.stallReset.threshold) {
+                    this.state.stallResetCycles++;
+                } else {
+                    this.state.stallResetCycles = 0;
+                }
+                if (this.state.stallResetCycles > config.stallReset.cycles) {
+                    warn(`UPhammer stalled. exiting...`, MONITOR);
+                    process.exit();
+                }
             }
-            if (this.state.stallResetCycles > config.stallReset.cycles) {
-                warn(`UPhammer stalled. exiting...`, MONITOR);
-                process.exit();
-            }
+            
             utils.monitorCycle(this.state);
         }
     }

@@ -19,16 +19,19 @@ function queryMempool(provider, address) {
         // console.log(res)
         let pending = res.data.result.pending[address];
         let queued =  res.data.result.queued[address];
-        if (queued && queued.length) {
-            console.log(`${queued.length} Queued TXs for ${address}`)
+        if (queued && Object.keys(queued).length) {
+            console.log(`${Object.keys(queued).length} Queued TXs for ${address}`)
         }
-        let nonces = Object.keys(pending);
-        for(let i=0; i<nonces.length; i++) {
-            let nonce = nonces[i];
-            let gasPrice = web3.utils.hexToNumber(pending[nonce].gasPrice);
-            let gas = web3.utils.hexToNumber(pending[nonce].gas);
-            console.log(`Nonce ${nonce} Gas Price ${gasPrice} Gas ${gas}`);
+        if(pending) {
+            let nonces = Object.keys(pending);
+            for(let i=0; i<nonces.length; i++) {
+                let nonce = nonces[i];
+                let gasPrice = web3.utils.hexToNumber(pending[nonce].gasPrice);
+                let gas = web3.utils.hexToNumber(pending[nonce].gas);
+                console.log(`Nonce ${nonce} Gas Price ${gasPrice} Gas ${gas}`);
+            }
         }
+        
 
     })
     .catch(err => {
@@ -37,18 +40,21 @@ function queryMempool(provider, address) {
 }
 
 function loadProfile(profileNumber) {
-    let content = fs.readFileSync(`${profileDir}/profile${profileNumber}.json`, 'utf-8');
+    let content = fs.readFileSync(`${profileDir}profile${profileNumber}.json`, 'utf-8');
     let profile = JSON.parse(content);
     return profile;
 }
 
-function main() {
-    let [,, ...args] = process.argv;
+function main(profileNumber) {
+    if(!profileNumber) {
+        let [,, ...args] = process.argv;
 
-    let profileNumber = args[0];
+        profileNumber = args[0];
+    }
+    
 
     let profile = loadProfile(profileNumber);
     queryMempool(config.provider, profile.wallets.transfer.address);
 }
 
-main(2);
+main(3);
