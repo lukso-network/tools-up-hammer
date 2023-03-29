@@ -30,7 +30,7 @@
     "txErrorLog": "./txErrors",
     "txTransactionLog": "./txLog",
     "logTx": false,
-    "deployProxy": true,
+    "deployProxy": false,
     "initialUPs": 2,
     "presets": {},
     "checkPendingTxs": false,

@@ -9,21 +9,23 @@ const utils = require('../utils');
 
 const OPERATION_CALL = 0;
 
-const web3 = new Web3(config.provider);
+let provider = config.provider;
+// provider = "http://35.204.31.88:8545"
 
-let replayed = false;
-let incremented = false;
+const web3 = new Web3(provider);
 
-async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice, profileNum ) {
+async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice, profileNum, sender ) {
     try {
         let targetPayload = await lsp.methods.mint(up.erc725._address, amt_or_id, false, '0x').encodeABI();
-        
+        console.log(targetPayload);
         let abiPayload = up.erc725.methods.execute(OPERATION_CALL, lsp._address, 0, targetPayload).encodeABI();
 
         console.log(`[+] (${profileNum}) Minting more LSP7 (${nonce})`);
 
+        let start = new Date();
+        console.log(`Start ${start.toISOString()}`);
         up.km.methods.execute(abiPayload).send({
-            from: EOA.transfer.address, 
+            from: sender, 
             gas: 5_000_001,
             gasPrice,
             nonce
@@ -46,6 +48,8 @@ async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice, profileNum ) {
             
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
+            let end = new Date();
+            console.log(`End ${end.toISOString()}`);
             console.warn(`[!] (${profileNum}) Minting Error. Nonce ${nonce} GasPrice ${gasPrice}`);
             console.log(error)
         });
@@ -57,6 +61,19 @@ async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice, profileNum ) {
     }
 }
 
+async function basicMint(up, lsp7, sender) {
+    console.log(`LSP ${lsp7._address}`)
+    console.log(`ERC ${up.erc725._address}`)
+    const myToken = new web3.eth.Contract(LSP7Mintable.abi, lsp7._address);
+
+    let res = await myToken.methods.mint(up.erc725._address, 100, false, '0x')
+    .send({ from: sender,
+            gas: 5_000_000,
+            gasPrice: config.defaultGasPrice
+     });
+    console.log(res);
+}
+
 async function singleTx(profileNum) {
     let rawProfile = await fs.readFileSync(`./profiles/profile${profileNum}.json`);
     let rawPresets = await fs.readFileSync(`./presets/presets${profileNum}.json`);
@@ -64,7 +81,7 @@ async function singleTx(profileNum) {
     let presets = JSON.parse(rawPresets);
     let EOA = profile.wallets;
     
-    let wallet = EOA.transfer;
+    let wallet = EOA.deploy;
 
     let privateKey = wallet.privateKey;
     let address = wallet.address;
@@ -108,7 +125,8 @@ async function singleTx(profileNum) {
     gasPrice = parseInt(gasPrice) + parseInt(gasPrice);
     // gasPrice = parseInt(gasPrice) + 10;
 
-    await mint(lsp7, up, 1, EOA, nonce, gasPrice, profileNum);
+    await mint(lsp7, up, 1, EOA, nonce, gasPrice, profileNum, address);
+    // await basicMint(up, lsp7, address);
 }
 
 function debugAll(numProfiles) {

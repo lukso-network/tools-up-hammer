@@ -9,5 +9,6 @@
             "privateKey": "0x00963beafaf7b38bcaead56b46f1e5ff51c2abac3d98ed440f169f298f5336df"
         }
     },
-    "presetsFile": "./presets/presets2.json"
+    "presetsFile": "./presets/presets2.json",
+    "maxDelay": 100
 }
