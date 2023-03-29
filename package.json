@@ -10,7 +10,7 @@
   "author": "Justin Regele",
   "license": "ISC",
   "dependencies": {
-    "@lukso/lsp-factory.js": "^2.5.0",
+    "@lukso/lsp-factory.js": "2.4.0",
     "await-delay": "^1.0.0",
     "dotenv": "^16.0.0",
     "line-reader": "^0.4.0",
