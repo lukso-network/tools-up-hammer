@@ -1,27 +1,25 @@
 {
-    "usage": "65.3",
+    "usage": "61.9",
     "monitor": {
-        "droppedNonces": {
-            "amount": 0
-        },
+        "droppedNonces": {},
         "incrementGasPrice": {
             "amount": 0
         },
         "tx": {
-            "loop": 106,
+            "loop": 88,
             "sent": 0,
             "checkPending": 0,
             "receipts": {
                 "transfers": 0,
                 "mints": 0,
-                "reverts": 32
+                "reverts": 0
             },
-            "mint": 41,
-            "attemptedTx": 65,
-            "attemptedMint": 41,
-            "hash": 41,
+            "mint": 15,
+            "attemptedTx": 52,
+            "attemptedMint": 15,
+            "hash": 8,
             "errors": {
-                "underpriced": 0,
+                "underpriced": 5,
                 "transactionReceipt": 0,
                 "invalidJSON": 0,
                 "nonceTooLow": 0,

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 const fs = require("fs");
 const Web3 = require("web3");
-const config = require("../config.json");
-const { fundSingleAccount } = require("../helpers");
+const config = require("../src/config.json");
+const { fundSingleAccount } = require("../src/helpers");
 
 const web3 = new Web3(config.provider);
 
@@ -98,7 +98,3 @@ async function main() {
 }
 
 main();
-
-module.exports = {
-    fundSingleAccount
-}

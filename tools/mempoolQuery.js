@@ -2,11 +2,11 @@ const Web3 = require("web3");
 const axios = require('axios');
 const fs = require("fs");
 
-const config = require("../config.json");
-const {getAddresses, getProfiles} = require("../helpers");
+const config = require("../src/config.json");
+const {getAddresses, getProfiles} = require("../src/helpers");
 
 const web3 = new Web3(config.provider);
-console.log(config.provider);
+
 const profileDir = "./profiles/";
 
 //  curl --data '{"method":"txpool_content","id":1,"jsonrpc":"2.0"}' 
@@ -45,16 +45,19 @@ function loadProfile(profileNumber) {
     return profile;
 }
 
-function main(profileNumber) {
-    if(!profileNumber) {
-        let [,, ...args] = process.argv;
-
-        profileNumber = args[0];
+function main() {
+    
+    let [,, ...args] = process.argv;
+    if(args.length < 1) {
+        console.log(`Usage: ${process.argv[1]} <profile-number>`)
+        process.exit();
     }
+    let profileNumber = args[0];
+    
     
 
     let profile = loadProfile(profileNumber);
     queryMempool(config.provider, profile.wallets.transfer.address);
 }
 
-main(3);
+main();

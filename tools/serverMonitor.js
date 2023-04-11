@@ -7,8 +7,8 @@ var bodyParser = require('body-parser')
 
 var jsonParser = bodyParser.json()
 
-const config = require("../config.json");
-const {getAddresses, getProfiles} = require("../helpers");
+const config = require("../src/config.json");
+const {getAddresses, getProfiles} = require("../src/helpers");
 
 
 const app = express();
@@ -30,6 +30,7 @@ for(let i=0;i<addresses.length; i++) {
 
 app.use(cors());
 
+// TODO reimplement authentication
 app.post('/p/:profileId/a/:address/s/:signature', jsonParser, (req, res) => {
   if(addresses.includes(req.params.address)) {
     // if(web3.eth.accounts.recover(req.body, req.params.signature)) {

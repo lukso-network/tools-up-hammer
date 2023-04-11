@@ -1,7 +1,6 @@
-
 const Web3 = require("web3");
-const config = require("../config.json");
-const {getAddresses, getProfiles} = require("../helpers");
+const config = require("../src/config.json");
+const {getAddresses, getProfiles} = require("../src/helpers");
 
 let web3 = new Web3(config.provider);
 console.log(config.provider);
