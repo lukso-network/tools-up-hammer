@@ -43,7 +43,7 @@
     "defaultGasPrice": "1000000000",
     "gasIncrement": 1,
     "backoff": 15,
-    "runServer": true,
+    "runServer": false,
     "serverReportFile": "serverReport.json",
     "reportingServer": "http://localhost:8080"
 }

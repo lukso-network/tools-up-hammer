@@ -3,10 +3,27 @@ const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/Universal
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const LSP8Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP8Mintable.json');
-const { deploy, deployLSP7, deployLSP8, transfer, randomKey, attemptMint } = require('./lib');
+const { 
+    deploy, 
+    deployLSP7, 
+    deployLSP8, 
+    transfer, 
+    randomKey, 
+    attemptMint 
+} = require('./lib');
 
-const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
-const {savePresets, errorHandler, whichWeb3} = require("./utils");
+const {
+    log, 
+    warn, 
+    DEBUG, 
+    VERBOSE, 
+    INFO
+} = require('./logging');
+const {
+    savePresets, 
+    errorHandler, 
+    whichWeb3
+} = require("./utils");
 
 async function loop_deployUP(state) {
     if(Object.keys(state.up).length < state.config.deployLimits.up) {
@@ -32,9 +49,6 @@ async function loop_deployUP(state) {
             }
         }
         
-        
-        
-            
         log(`ERC725 address:     ${erc725_address}`, INFO);
         log(`KeyManager address: ${km_address}`, INFO);
         erc725 = new web3.eth.Contract(UniversalProfile.abi, erc725_address);
@@ -46,10 +60,9 @@ async function loop_deployUP(state) {
         if(state.config.buildPresets) {
             savePresets(state, state.config.presetsFile);
         }
-        
-        
     }
 }
+
 async function loop_deployLSP7(state) {
     let config = state.config;
     if(Object.keys(state.lsp7.addresses).length < config.deployLimits.lsp7) {
@@ -73,7 +86,6 @@ async function loop_deployLSP7(state) {
                 savePresets(state, state.config.presetsFile);
             }
         }
-        
     }
 }
 
@@ -105,7 +117,6 @@ async function loop_deployLSP8(state) {
                         currentId
                     } 
                 });
-
         }
 
         if (lsp8_asset) {
@@ -124,14 +135,15 @@ async function loop_deployLSP8(state) {
     }
 
 }
+
 async function loop_mintLSP7(state) {
     if(Object.keys(state.lsp7.addresses).length > 0) {
         attemptMint('lsp7', LSP7Mintable.abi, state);
     } else {
        warn('No LSP7 to mint', VERBOSE);
-    }
-    
+    }    
 }
+
 async function loop_mintLSP8(state) {
     
     if(Object.keys(state.lsp8.addresses).length > 0) {

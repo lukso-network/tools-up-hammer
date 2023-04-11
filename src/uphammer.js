@@ -5,21 +5,29 @@ const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.
 const LSP8IdentifiableDigitalAsset = require('@lukso/lsp-smart-contracts/artifacts/LSP8IdentifiableDigitalAsset.json');
 
 const Web3 = require('web3');
-const fs = require('fs');
 
 const crypto = require('crypto');
 const delay = require('await-delay');
 
-const {initUP, randomIndex } = require('./lib');
+const { 
+    initUP, 
+    randomIndex 
+} = require('./lib');
 const actions = require('./actions');
 const config = require("./config.json");
 const utils = require("./utils");
 
-const {log, warn, DEBUG, VERBOSE, INFO, MONITOR, QUIET} = require('./logging');
+const {
+    log, 
+    warn, 
+    INFO, 
+    MONITOR, 
+    QUIET
+} = require('./logging');
 
-let {state} = require("./state");
+let { state } = require("./state");
 
-// we need to override _onHttpRequestError to get network failure information
+// Override _onHttpRequestError to get network failure information
 const XHR = require('xhr2-cookies').XMLHttpRequest
 
 XHR.prototype._onHttpRequestError = function (request, error) {
@@ -83,16 +91,11 @@ class UPHammer {
         log(`ChainId is ${this.config.chainId}`, INFO);
         // web3 is used for transferring and minting, not deployments
         this.web3 = new Web3(this.provider, this.config.wallets.transfer.privateKey);
-        if(this.config.wsProvider) {
-            this.ws = new Web3(this.config.wsProvider, this.config.wallets.transfer.privateKey);
-            this.ws.eth.accounts.wallet.add(this.config.wallets.transfer.privateKey);
-        }
         
         const EOA_transfer = this.web3.eth.accounts.wallet.add(this.config.wallets.transfer.privateKey);
         
         // deploy key is used for deployments
         const EOA_deploy = this.web3.eth.accounts.wallet.add(this.config.wallets.deploy.privateKey);
-        
         
         const DEPLOY_PROXY = this.config.deployProxy;
         
@@ -126,14 +129,16 @@ class UPHammer {
         };
     }
 
-    
-
     mergeConfig = function(user_config) {
         for(let setting in user_config) {
             this.config[setting] = user_config[setting];
         }
     }
 
+    /**
+     * Initializes UPHammer by loading presets
+     * If no presets are available, a preconfigured number of UPs are deployed
+     */
     init = async function(num_to_deploy) {
         let initialized = false;
         if(this.config.presets) {
@@ -147,6 +152,9 @@ class UPHammer {
         }
     }
 
+    /**
+     * Loads all presets from disk into memory
+     */
     loadPresets = async function() {
         if (!this.config.presets[config.wallets.deploy.address]) { return false }
         // load UPs
@@ -203,6 +211,9 @@ class UPHammer {
         return true;
     }
 
+    /**
+     * Checks whether deployments have reached their configured limits
+     */
     continueDeployments = function () {
         let _continue = false;
         if(Object.keys(this.state.up).length <= this.config.deployLimits.up
@@ -214,6 +225,9 @@ class UPHammer {
         return _continue;
     }
 
+    /**
+     * Loop to deploy UPs and LSPs
+     */
     deployActors = async function () {
         // wait until there are UPs loaded into state
         while(Object.keys(this.state.up).length === 0) {
@@ -238,25 +252,8 @@ class UPHammer {
         log('Finished deployments', INFO);
     }
 
-    doWebSocket = function() {
-        this.ws.eth.getBalance(this.config.wallet.transfer.address)
-                .then(balance => console.log(`[+] WS Balance ${balance}`))
-                .catch(e => errorHandler(this.state, e));
-    }
-
-    runWebSocket = async function() {
-        if(this.config.wsProvider) {
-            while(true) {
-                doWebSocket();
-                await delay(this.config.webSocketDelay);
-            }
-        }
-        
-    }
-
-
     /***
-     * This is the main loop for transfers. It runs at an interval set in config as maxDelay
+     * This is the main loop for transfers. It runs at an interval set in config as `maxDelay`
      * A random index is selected from the `transfer_actions` array
      */
     runTransfers = async function () {
@@ -296,9 +293,12 @@ class UPHammer {
     }
 
     /**
-     * This function iterates through state.pendingTxs and looks up the txhashes found there.
-     * The state.pendingTxs array stores objects of type {hash, nonce}
-     * If no TX is found for that hash, the nonce is added to the state.droppedNonces array if it doesn't already exist
+     * This function iterates through `state.pendingTxs` and looks up the txhashes found there.
+     * The `state.pendingTxs` array stores objects of type {hash, nonce}
+     * If no TX is found for that hash, the nonce is added to the `state.droppedNonces` array 
+     * if it doesn't already exist
+     * NOTE: this method of nonce tracking was resource hungry and did not handle network level
+     * failures well. It is currently disabled. To enable, set `checkPendingTxs` to true in the config. 
      */
     checkPendingTx = async function () {
         let hashes = Object.keys(this.state.pendingTxs);
@@ -325,22 +325,19 @@ class UPHammer {
                     utils.errorHandler(this.state, e);
                     // console.log(e);
                 })
-
             }
-            
-
         }
-    
     }
 
     /**
-     * The loop that checks for dropped nonces. The `nonceCheckDelay` parameter in the config controls how often this is run
+     * The loop that checks for dropped nonces. 
+     * The `nonceCheckDelay` parameter in the config controls how often this is run
      */
     nonceCheck = async function () {
     
         while(true) {
             // we want to check on what the chain thinks our nonce is
-            // current check is simple. We are in a timed loop set by nonceCheckDelay
+            // current check is simple. We are in a timed loop set by `nonceCheckDelay`
             // if we see the same nonce twice from the chain, we add that nonce to dropped nonces
             // so basically the timer needs to be adjusted so we should see the nonce increment 
             // between loops
@@ -403,7 +400,9 @@ class UPHammer {
     }
 
 
-
+    /**
+     * Updates state with the latest balance of the transfer wallet
+     */
     updateBalance = async function() {
         while(true) {
             try {
@@ -415,6 +414,10 @@ class UPHammer {
             await delay(this.state.config.balanceUpdateDelay);
         }
     }
+
+    /**
+     * Deprecated. We are not currently funding from the faucet while the tool runs.
+     */
     fundWallet = async function() {
         while(true) {
             utils.fund(this.state);
@@ -424,9 +427,13 @@ class UPHammer {
         }
     }
     
+    /**
+     * Starts the loops to update the balance and periodically fund from the faucet
+     * Note funding from the faucet is no longer working not the strategy.
+     */
     balanceAndFundLoop = async function() {
         this.updateBalance();
-        this.fundWallet();
+        // this.fundWallet();
 
     }
     /**
@@ -454,7 +461,6 @@ class UPHammer {
         log(`Transfer Wallet Nonce is ${this.state.nonce}`, MONITOR, this.state);
         log(`Total Pending is ${totalPending}`, MONITOR, this.state);
         await this.init(this.config.initialUPs);
-        // console.log(state);
         
         if(!this.state.config.deployOnly) {
             this.balanceAndFundLoop();
