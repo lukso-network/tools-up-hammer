@@ -4,3 +4,4 @@ node_modules
 txErrors
 userConfig.json
 txLog
+serverReport.json
