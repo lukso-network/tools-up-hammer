@@ -4,13 +4,12 @@ const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/Universal
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 
-const config = require('../config.json');
-const utils = require('../utils');
+const config = require('../src/config.json');
+const utils = require('../src/utils');
 
 const OPERATION_CALL = 0;
 
 let provider = config.provider;
-// provider = "http://35.204.31.88:8545"
 
 const web3 = new Web3(provider);
 
@@ -32,20 +31,9 @@ async function mint(lsp, up, amt_or_id, EOA, nonce, gasPrice, profileNum, sender
         })
         .on('transactionHash', function(hash){
             console.log(`[+] (${profileNum}) Tx: ${hash} Nonce: ${nonce}`);
-            // if(!replayed) {
-            //     replayed = true;
-            //     amt_or_id++;
-            //     mint(lsp, up, amt_or_id, EOA, nonce, gasPrice);
-            // }
-            // if(!incremented) {
-            //     nonce++;
-            //     incremented = true;
-            //     mint(lsp, up, amt_or_id, EOA, nonce, gasPrice);
-            // }
         })
         .on('receipt', function(receipt){
-            console.log(`Minted tokens (${profileNum}) ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `);
-            
+            console.log(`Minted tokens (${profileNum}) ${receipt.transactionHash} to ${lsp._address} Nonce ${nonce} `);      
         })
         .on('error', function(error, receipt) { // If the transaction was rejected by the network with a receipt, the second parameter will be the receipt.
             let end = new Date();
@@ -141,5 +129,23 @@ function debugAll(numProfiles) {
     }
 }
 
-singleTx(1);
-// debugAll([1,10]);
+function main() {
+    let [,, ...args] = process.argv;
+
+    if (args.length < 1) {
+        console.log(`Usage: ${process.argv[1]} <profile-number>`);
+        console.log(`Usage: ${process.argv[1]} <profile start> <profile end>`);
+        process.exit();
+    }
+
+    if(args.length === 1) {
+        let profileNumber = parseInt(args[0]);
+        singleTx(profileNumber);
+    } else {
+        let start = parseInt(args[0]);
+        let end = parseInt(args[1]);
+        debugAll([start, end]);
+    }
+}
+
+main();

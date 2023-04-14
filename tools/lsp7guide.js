@@ -1,8 +1,9 @@
 const LSP7Mintable = require('@lukso/lsp-smart-contracts/artifacts/LSP7Mintable.json');
 const Web3 = require('web3');
 const  ethers  = require('ethers');
+const config = require("../src/config.json");
 
-const RPC_URL = 'http://127.0.0.1:8545'; //'https://rpc.2022.l16.lukso.network/'
+const RPC_URL = config.provider;
 
 const web3 = new Web3(RPC_URL);
 
@@ -58,7 +59,7 @@ async function mintethers(myTokenAddress) {
 async function main() {
     let lsp7 = await deploy();
     console.log(`lSP7 ${lsp7._address}`)
-    await mintethers(lsp7._address);
+    await mint(lsp7._address);
 }
 
 main()

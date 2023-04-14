@@ -3,8 +3,19 @@ const fs = require('fs');
 const axios = require('axios');
 const Web3 = require('web3');
 
-const {log, warn, monitor, DEBUG, VERBOSE, INFO, MONITOR, QUIET} = require('./logging');
+const {
+    log, 
+    warn, 
+    monitor, 
+    DEBUG, 
+    VERBOSE, 
+    MONITOR, 
+} = require('./logging');
 
+/**
+ * Returns the next nonce
+ * @param {*} state 
+ */
 function nextNonce(state) {
     let nonce;
     let gasPrice = undefined;
@@ -23,6 +34,8 @@ function nextNonce(state) {
     } else if(state.incrementGasPrice.length > 0) {
         let next = state.incrementGasPrice.shift();
         nonce = next.nonce;
+        // TODO implement a better gasPrice incrementer
+        // this one gets nonces "unstuck" much quicker than incrementing by 1. But it is also exponential which is problematic
         let multiplier = state.underPricedNonceMultiplier[nonce] ? state.underPricedNonceMultiplier[nonce] : 1
         gasPrice = parseInt(next.gasPrice) + (parseInt(state.config.gasIncrement) * multiplier);
         gasPrice = gasPrice.toString();
@@ -37,6 +50,11 @@ function nextNonce(state) {
     return {nonce, gasPrice};
 }
 
+/**
+ * Stores sent nonces. This is useful to keep track of nonces that have been sent so we can account for them later
+ * @param {*} state 
+ * @param {*} nonce 
+ */
 function storeSentNonce(state, nonce) {
     state.sentNonces.push(nonce);
     state.sentNonces.sort();
@@ -56,6 +74,12 @@ function accountForNonce(state, nonce) {
     }
 }
 
+/**
+ * Stores a nonce in the droppedNonces array if it is not present.
+ * Also sorts the array so that the lowest index is the lowest nonce
+ * @param {*} state 
+ * @param {*} nonce 
+ */
 function addNonceToDroppedNoncesIfNotPresent(state, nonce) {
     if(state.droppedNonces.indexOf(nonce) >= 0) {  return; }
     state.droppedNonces.push(nonce);
@@ -71,7 +95,7 @@ function replayAndIncrementGasPrice(state, nonce, gasPrice) {
     if(!state.underPricedNonceMultiplier[nonce]) {
         state.underPricedNonceMultiplier[nonce] = 1;
     } else {
-        state.underPricedNonceMultiplier[nonce] *= 10;
+        state.underPricedNonceMultiplier[nonce] *= 2;
     }
 
 
@@ -127,6 +151,15 @@ function backoff(state) {
     state.backoff = state.config.backoff;
 }
 
+/**
+ * Catch all error handling function
+ * Specific errors require handling nonces in different ways.
+ * @param {*} state 
+ * @param {*} error 
+ * @param {*} nonce 
+ * @param {*} receipt 
+ * @param {*} gasPrice 
+ */
 function errorHandler(state, error, nonce, receipt, gasPrice) {
     if(error.toString().includes("replacement transaction underpriced")) {
         state.monitor.tx.errors.underpriced++;
@@ -167,6 +200,9 @@ function errorHandler(state, error, nonce, receipt, gasPrice) {
     }
 }
 
+/**
+ * Resets monitoring data at the beginning of the cycle
+ */
 function resetMonitor() {
     return {
         droppedNonces: {
@@ -220,6 +256,10 @@ function formatNonces(nonces) {
     return output;
 }
 
+/**
+ * Deprecated. We are no longer funding using the faucet
+ * @param {} state 
+ */
 async function fund(state) {
     let address = state.config.wallets.transfer.address;
     axios
@@ -241,6 +281,11 @@ async function fund(state) {
         });
 }
 
+/**
+ * If C2C data is received from the reporting server, apply it to state
+ * @param {*} state 
+ * @param {*} data 
+ */
 function processC2CData(state, data) {
     if(data) {
         state.c2c.pause = data.pause ? data.pause : false
@@ -248,12 +293,26 @@ function processC2CData(state, data) {
     
 }
 
+/**
+ * Add additional data to monitor object before sending to reporting server
+ * @param {*} data 
+ * @param {*} state 
+ */
 function extraMonitorData(data, state) {
     data.maxDelay = state.config.maxDelay;
     data.c2c = state.c2c;
     return data;
 }
 
+/**
+ * In cloud environments, console output is limited. This function will report on the state of the tool
+ * to a reporting server
+ * Since this was used with Google Cloud Run as a job, CLOUD_RUN_TASK_INDEX environment variables are used
+ * to identity the UPhammer profile
+ * @param {*} host 
+ * @param {*} data 
+ * @param {*} state 
+ */
 function reportToServer(host, data, state) {
     data = extraMonitorData(data, state) 
     let web3 = new Web3(state.config.provider);
@@ -275,6 +334,10 @@ function reportToServer(host, data, state) {
         });
 }
 
+/**
+ * Console monitoring output
+ * @param {*} state 
+ */
 function monitorCycle(state) {
     let totalReceipts = state.monitor.tx.receipts.transfers + state.monitor.tx.receipts.mints + state.monitor.tx.receipts.reverts;
     let realTx = state.monitor.tx.sent + state.monitor.tx.mint;
@@ -358,6 +421,11 @@ function alreadySavedLSP(presets, lsp) {
     return saved;
 }
 
+/**
+ * Save presets to disk
+ * @param {*} state 
+ * @param {*} presetsFile 
+ */
 function savePresets(state, presetsFile) {
     let presets = state.config.presets;
     let deployKey = state.config.wallets.deploy.address;
@@ -421,6 +489,13 @@ function readFiles(dirname, onFileContent, onFinish) {
     });
   }
 
+/**
+ * Returns an instance of web3
+ * For use to alternate between http and websockets versions of web3
+ * Currently untested with websockets. 
+ * Will only return the web3 in `state` if not `wsProvider` is specified in config
+ * @param {*} state 
+ */
 function whichWeb3(state) {
     if (!state.config.wsProvider) {
         return state.web3;

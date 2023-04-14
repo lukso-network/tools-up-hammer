@@ -7,12 +7,33 @@ const schemas = require('./schemas.js').schemas;
 const lsp3Profile = require('./profiles.js').profile;
 const config = require("./config.json");
 
-const {log, warn, monitor, DEBUG, VERBOSE, INFO, QUIET} = require('./logging');
+const {
+    log, 
+    warn,
+    DEBUG, 
+    VERBOSE, 
+    INFO
+} = require('./logging');
 
-const {nextNonce, errorHandler, randomIndex, randomKey, logTx, addNonceToDroppedNoncesIfNotPresent, savePresets, accountForNonce, storeSentNonce } = require("./utils");
+const {
+    nextNonce, 
+    errorHandler, 
+    randomIndex, 
+    randomKey, 
+    logTx, 
+    addNonceToDroppedNoncesIfNotPresent, 
+    savePresets, 
+    accountForNonce, 
+    storeSentNonce 
+} = require("./utils");
 
 const OPERATION_CALL = 0;
 
+/**
+ * Reinits lspFactory. This was found to help resolve nonce issues
+ * @param {*} lspFactory 
+ * @param {*} config 
+ */
 function reinitLspFactory(lspFactory, config) {
     lspFactory = new LSPFactory(lspFactory.options.provider, {
         deployKey: config.wallets.deploy.privateKey, // Private key of the account which will deploy UPs
@@ -21,8 +42,10 @@ function reinitLspFactory(lspFactory, config) {
     return lspFactory;
 }
 
-
-
+/**
+ * Initializes the first UPs
+ * @param {*} state 
+ */
 async function initUP(state) {
     let {lspFactory, web3, config } = state;
 
@@ -55,7 +78,9 @@ async function initUP(state) {
     }
 }
 
-// Deploy LSP3 Account
+/**
+ * Deploy UP (LSP3 Account)
+ */ 
 async function deploy(lspFactory, config, state) {
     lspFactory = reinitLspFactory(lspFactory, config);
 
@@ -91,6 +116,14 @@ async function deploy(lspFactory, config, state) {
     
 }
 
+/**
+ * Deploys an LSP8
+ * @param {*} lspFactory 
+ * @param {*} web3 
+ * @param {*} owner_address 
+ * @param {*} EOA 
+ * @param {*} state 
+ */
 async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
     lspFactory = reinitLspFactory(lspFactory, state.config);
 
@@ -106,7 +139,6 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
             warn(e.toString().substring(0,100), INFO, state);
         })
 
-        
         const lsp8 = new web3.eth.Contract(
             LSP8IdentifiableDigitalAsset.abi,
             lsp8_asset.LSP8IdentifiableDigitalAsset.address,
@@ -114,18 +146,16 @@ async function deployLSP8(lspFactory, web3, owner_address, EOA, state) {
                 from: EOA.deploy.address
             }
         );
-        return lsp8;
-        
-        
-    
-        
-        
+        return lsp8;     
     } catch (e) {
         warn("Error during LSP8 Deployment", INFO, state);
     }
     
 }
 
+/** 
+ * Deploys LSP7
+ */
 async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
     lspFactory = reinitLspFactory(lspFactory, state.config);
     
@@ -159,6 +189,12 @@ async function deployLSP7(lspFactory, web3, owner_address, EOA, state) {
     
 }
 
+/**
+ * Prepares for minting an lsp7 or lsp8
+ * @param {string} type 'lsp7 | lsp8'
+ * @param {json} abi Contract ABI
+ * @param {*} state 
+ */
 async function attemptMint(type, abi, state) {
     let lsp = state[type];
     let {up, EOA, web3} = state;
@@ -198,23 +234,24 @@ async function attemptMint(type, abi, state) {
         km = new web3.eth.Contract(KeyManager.abi, up[erc725_address].km._address);
         
         mint(lsp_asset, erc725_address, mint_amt_or_id, {erc725, km}, EOA, state, type.toUpperCase());
-        // 
-        
-
-        // should remove the following. we cannot keep track of the state of the train locally
-        // if(type==='lsp7') {
-        //     state[type].addresses[asset_address].totalSupply += mint_amt_or_id;
-        // } else {
-        //     state[type].addresses[asset_address].totalSupply += 1;
-        // }
         
     } else {
         warn(`[!] No ${type} to mint`, INFO);
     }
 }
 
-//https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
+/**
+ * Mints an LSP
+ * @param {Contract} lsp - the LSP contract
+ * @param {string} up_address - address of the controlling UP
+ * @param {*} amt_or_id  - the amount to mint, or the id (for LSP8)
+ * @param {erc725: Contract, km: Contract} up  
+ * @param {*} EOA - Externally Owned Account. needs to have the transfer wallet inside
+ * @param {*} state 
+ * @param {string} type - 'lsp7 | lsp8' 
+ */
 async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
+    //https://docs.lukso.tech/guides/assets/create-lsp7-digital-asset/
     let next, nonce, gasPrice;
     try {
         let targetPayload = await lsp.methods.mint(up_address, amt_or_id, false, '0x').encodeABI();
@@ -279,6 +316,16 @@ async function mint(lsp, up_address, amt_or_id, up, EOA, state, type) {
     
 }
 
+/**
+ * Transfers an LSP
+ * @param {*} lsp - The LSP Contract object 
+ * @param {*} _from - from address
+ * @param {*} _to  - to address
+ * @param {*} amount - the amount
+ * @param {*} up - the controlling UP
+ * @param {*} state 
+ * @param {*} type - 'lsp7|lsp8'
+ */
 async function transfer(lsp, _from, _to, amount, up, state, type ) {
     let next, nonce, gasPrice;
     try {

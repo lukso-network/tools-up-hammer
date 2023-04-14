@@ -1,8 +1,9 @@
 const UniversalProfile = require('@lukso/lsp-smart-contracts/artifacts/UniversalProfile.json');
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const Web3 = require('web3');
+const config = require('../src/config.json');
 
-let provider = 'https://rpc.l16.lukso.network';
+let provider = config.provider;
 
 const web3 = new Web3(provider);
 let up_address = '0x9294f7d2e22225068e3423389C10390A2C2aAe10';

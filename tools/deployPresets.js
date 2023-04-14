@@ -1,5 +1,5 @@
 const fs = require("fs");
-const UPHammer = require("../uphammer");
+const UPHammer = require("../src/uphammer");
 
 
 function deployPresets(profileNumber) {

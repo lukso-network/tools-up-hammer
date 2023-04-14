@@ -1,9 +1,10 @@
 const Web3 = require("web3");
-const config = require("../config.json");
+const config = require("../src/config.json");
 
 const l16 = config.provider;
 console.log(l16);
 
+// bootnode IPs. These are definitely outdated.
 let ips = [
     "34.141.186.165",
     "34.90.174.53",

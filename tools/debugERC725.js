@@ -2,9 +2,9 @@ const { ERC725 } = require('@erc725/erc725.js');
 const Web3 = require('web3');
 const KeyManager = require('@lukso/lsp-smart-contracts/artifacts/LSP6KeyManager.json');
 const LSP6Schema = require('@erc725/erc725.js/schemas/LSP6KeyManager.json');
-const schemas = require('../schemas.js').schemas;
+const schemas = require('../src/schemas.js').schemas;
 
-const config = require("../config.json");
+const config = require("../src/config.json");
 const RPC_URL = config.provider;
 const web3 = new Web3(RPC_URL);
 
