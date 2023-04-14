@@ -30,11 +30,11 @@ async function main() {
     console.log(`[+] Funding from ${funder.address}`)
 
     for(let i=1; i<=numberOfAccounts; i++) {
-        let profile = await createProfile(i, profilesDir, presetsDir);
+        let profile = await createProfile(i, profilesDir, presetsDir, web3);
         profiles.push(profile);
     }
 
-    await fundProfiles(funder, profiles, amountToFund);
+    await fundProfiles(funder, profiles, amountToFund, web3);
 }
 
 main();

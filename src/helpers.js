@@ -66,7 +66,7 @@ async function fundSingleAccount(funder, recipient, amount, web3) {
  * @param {*} profilesDir 
  * @param {*} presetsDir 
  */
-async function createProfile(i, profilesDir, presetsDir) {
+async function createProfile(i, profilesDir, presetsDir, web3) {
     try {
         // if there is already a profile file, check if it has a `locked` property set
         // if it is `locked`, then simply return that profile, do not create a new one
@@ -108,7 +108,7 @@ async function createProfile(i, profilesDir, presetsDir) {
  * @param {*} profiles - an array of profile configs
  * @param {*} amountToFund - option. If absent, the full balance of funder is used
  */
-async function fundProfiles(funder, profiles, amountToFund) {
+async function fundProfiles(funder, profiles, amountToFund, web3) {
     if(!amountToFund) {
         // will fund using the entire balance
         amountToFund = await web3.eth.getBalance(funder.address);
