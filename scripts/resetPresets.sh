@@ -2,5 +2,5 @@
 
 for i in `seq 10`
 do
-    echo "" > presets/presets$i.json
+    echo "" > ./presets/presets$i.json
 done

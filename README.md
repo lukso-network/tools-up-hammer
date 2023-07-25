@@ -1,24 +1,89 @@
 # LUKSO UP Hammer
 
-A network stress testing tool
+A Lukso network stress testing tool
+
+## TLDR;
+
+### Clone and install
+
+```bash
+git clone git@github.com:lukso-network/tools-up-hammer.git
+cd tools-up-hammer
+npm i
+```
+
+### Build and Fund Profiles
+
+```bash
+node tools/profileBuilder.js <funded private key> <number of profiles> [amount to fund (optional)]
+```
+
+### Deploy Presets
+```bash
+./buildPresets.sh <number of profiles>
+```
+This will take several hours. 
+
+### Upload to GCloud/CloudRun*
+```bash
+./cloudPush.sh
+```
+*REQUIRES EDITING the script for your environment. This will not work without setting up something in CloudRun and editing this script to match.
+
+If profiles are not being updated, committing all the changes to the `profiles/` and `presets/` directories might be necessary for being included in the container.
+
+Alternatively, if using a different cloud based system to run multiple tool instances,
+the `UPHAMMER_PROFILE` environment variable can be used with the `uphammerProfileEnv.sh` shell script.
+
+### Monitoring 
+
+```bash
+./tools/serverMonitor.js
+```
+
+The host where this server is running can be set in the `UPHAMMER_REPORTING_SERVER` environment variable of whatever cloud system the tool runs on, or if the URL is static, can be set in config as the `reportingServer` variable.
+
+NOTE: the Monitoring tool is severely underdeveloped in terms of UI and C2C functionality. It is not ready for any sort of release, but was useful during testing to get insight into what the cloud instances were doing.
+
+
+
+
 
 ## Architecture
 
-The tool requires two sets of funded EOAs. This is because deployments of UPs and LSPs use lspFactory, which expects the nonces to not change during deployments. Minting and Transfers happen in a separate loop at rapid speed, so require their own EOA to manage nonces. At startup, the script will check the balances of both EOAs. If either account is empty, the script will terminate.
-
-TODO - implement regular checks for funds and handle when an EOA is without funds by exiting.
+Each instance of the tool requires two separately funded EOAs. This is because deployments of UPs and LSPs use lspFactory, which expects the nonces to not change during deployments. Minting and Transfers happen in a separate loop at rapid speed, so require their own EOA to manage nonces. At startup, the script will check the balances of both EOAs. If either account is empty, the script will terminate.
 
 ### Deployments
 Deployments can be of 3 types: UP, LSP7, and LSP8. Both EOAs are added as controllers when deployed. Once deployed, the UP or LSP is saved to the scripts internal state and can be used for minting and transferring. If **savePresets** is set to **true** in the config.json file, the address of the deployed entity will be saved in the file specified in **presetsFile** in config.json. These presets can then be reloaded later by passing the presets file to the script. This makes hammering more efficient as deployments take time. A **deploymentDelay** variable in config.json allows for setting the delay between deployments. 
 
+The recommended way to run the tool is to run the deployments in a prepartory stage and build out the **Presets**. Running deployments only happens when **deployOnly** is set to **true**. It is **false** by default. 
+
+To build out profiles, use the `tools/buildProfiles.js` utility. This will create the Profiles and fund them. For deployments, each profile must be running in its own instance of node, as state is a global variable and multiple profiles running in the same node isolate will hammer each other and nonce issues will result. A `buildPresets.sh` convenience script is provided in the `scripts/` directory. It takes a single numeric parameter on how many profiles and corresponding sets of presets to build. For example, to build 30 sets of Profiles/Presets:
+
+```bash
+./buildPresets.sh 30
+```
+
+This will take a few hours, but will build out all the presets for however many number of profiles needed.
+
 ### Transfers
-Minting and Transfers run in a loop with a timer that is controlled by  **maxDelay** in the config. It is currently set to 0. For development purposes, this can be tampered with. During testing, with a **maxDelay** of 0, the TX output can range up to 1500 per monitor cycle. This is admittedly not very high. When the script starts to max our CPU or Memory, TX output begins to drop off. If **backoff** in the config is also set to high, the presence of errors can cause the script to get stuck for a moment while the backoff reduces to 0. The **backoff** in config.json is set to 15ms.
+Minting and Transfers run in a loop with a timer that is controlled by  **maxDelay** in the config. It is currently set to 10. When this delay becomes too low, resource issues introduce delays in the tool, or the network itself becomes a bottleneck. When the script starts to max our CPU or Memory, TX output begins to drop off. If **backoff** in the config is also set too high, the presence of errors can cause the script to get stuck for a moment while the backoff reduces to 0. The **backoff** in config.json is set to 15ms.
 
-Work can be done to speed up the script. A likely slowdown is what the script does to attempt to make a proper TX. It tries to find an LSP with funds. And then finds out who has funds or owns the LSP8 token, and then sends to a randomly selected UP. All these calculations use `await`, which means the TX is slowed down. If better insight to whether TXs were mined as Reverts were added into the script, alot of these checks could be removed, because a Revert is still valid in our case. We really don't care if the TX succeeded, only that it was mined.
+#### Missing Nonces
+The goal of the tool is to send as many TXs as possible to the pool to get mined as soon as possible. This goal is anti-thetical to the architecture of blockchain, which requires consensus on TXs that all must have nonces that increment by 1. Because TXs can be dropped from the mempool at any time, nonces always go missing. Because nonces are required to increment by 1 for each request, a missing nonce will prevent all subsequent TXs from being mined. 
 
-Because TXs can be dropped from the mempool at any time, nonces can go missing. Because nonces are required to increment by 1 for each request, a missing nonce will prevent all subsequent TXs from being mined. Because of this an additional loop is running on a timer that will check for all the TX hashes stored in the state's `pendingTxs` array. If the TX hash is not found in the mempool, the nonce is added to `droppedNonces` and will be replayed. The timer for the nonce check is **nonceCheckDelay** in the config. We initially set this to 5 seconds, but have changed it to 10 seconds. The reason for this is that if a nonce is replayed and the mempool has two transactions with the same nonce, the node will return a `replacement transaction underpriced` error. When this happens, that nonce must be replayed again but with higher gas. The **gasIncrement** in the config (defaults to 1) determines how much the replayed gas will be for that nonce. When **nonceCheckDelay** was set to 5s, an apparent race condition was happening that caused a high amount of `replacement transaction underpriced` errors, which wastes alot of time and TX output. Incrementing this to 10s seemed to solve this problem. 
+The `nonceCheck` loop uses the chain as the source of truth for the "current" nonce. The "current" nonce is stored in the application's state. On the next run of `nonceCheck`, if the "current" nonce has not changed, the nonce is added to the queue of dropped nonces. The timing of this loop is configured by the **nonceCheckDelay**. Setting this number too low will likely result in `replacement transaction underpriced` errors. The current default value is 5s. This method was found to be the most effective and resource efficient method for keeping to tool up-to-date with the nonce.
+
+An alternative method that is disabled by default is to check for pending transactions. This can be turned on by setting **checkPendingTxs** to true in the config. With this method, the tool will check for all the TX hashes stored in the state's `pendingTxs` array. If the TX hash is not found in the mempool, the nonce is added to `droppedNonces` and will be replayed. The timer for the nonce check is **nonceCheckDelay** in the config. If using this method, it is recommended to set **nonceCheckDelay** to 10s or higher. The reason for this is that if a nonce is replayed and the mempool has two transactions with the same nonce, the node will return a `replacement transaction underpriced` error. When this happens, that nonce must be replayed again but with higher gas. The **gasIncrement** in the config (defaults to 1) determines how much the replayed gas will be for that nonce. When **nonceCheckDelay** was set to 5s, an apparent race condition was happening that caused a high amount of `replacement transaction underpriced` errors, which wastes alot of time and TX output. Incrementing this to 10s seemed to solve this problem. 
 
 When selecting a nonce for a TX, the script first inspects `droppedNonces` and `incrementGasPrice` arrays for a nonce. If both arrays have a nonce, it will take whichever nonce is lower.
+
+#### Increment Gas Price
+A better algorithm for incrementing gas price should be developed. Originally, gas price was incremented by 1, but in cases where the tool became stuck and restarted, getting nonces unstuck became increasingly difficult. The current algorithm is exponential, which has its own set of problems. For instance, it becomes very wasteful and hits the max gas price ceiling quickly.
+
+### Profiles & Presets
+
+The architecture of blockchain requires careful handling of nonces, and consensus amongst nodes makes consistent hammering difficult. Parallelization is one strategy that is proven useful in hammering a network. This requires making several **Profiles** of the UPhammer tool. A profile can be considered to be its own pair of deploy and transfer EOAs, and its corresponding set of **Presets**. 
 
 ### Monitoring 
 The **monitorDelay** in the config defaults to 5 seconds. When **logLevel** is set to 3 (`MONITOR`), the monitoring output will refresh information about what has happened since the last monitor cycle. The exceptions to this refresh are **Pending TXs** and **Nonces** displays: these reflect what is actually stored in the state at the time. 
@@ -34,7 +99,7 @@ The monitoring output
 **Backoff** current backoff in ms. The backoff is added to `maxDelay` between each transfer. It decrements by 1 for each request. If `backoff` does not 
 move between monitor cycles, it is likely the script is stuck because of some resource constraints on the machine itself. Or check **Network Failures** output to see if the RPC endpoint is hanging up
 
-**Successes** The number of times `.on('receipt'...)` is called from minting and transfer calls during the monitor cycle. This is often a low amount and is likely because Reverts are not being counted. There are likely alot of reverts happening.
+**Successes** The number of times `.on('receipt'...)` is called from minting and transfer calls during the monitor cycle. 
 
 **Pending** The number of pending TXs in the local state. This does not refresh between monitoring cycles
 
@@ -62,15 +127,15 @@ move between monitor cycles, it is likely the script is stuck because of some re
 
    **ETIMEDOUT**
 
-**Nonces: Current** the current nonce at the moment the monitor cycle is reporting. This is taken directly from the state.
+**Nonces: Current** the current nonce at the moment the monitor cycle is reporting. This is taken directly from the state. **From Chain** is the nonce from chain during the last `nonceCheck` cycle and **Divergence** is the difference between the two. If **Divergence** gets too high, either the **nonceCheckDelay** is too high, or there is a problem with the network
 
-   **Dropped** The number of dropped nonces 
+   **Dropped** The number of dropped nonces and the first few nonces in the sorted dropped nonces array
 
-   **Next** this is the lowest nonce in the `droppedNonces` array. Useful to compare to the current nonce
+   **Incrementing Gas Price** The number of nonces that need to be replayed with a higher gas price, and the first few nonces
 
-   **Incrementing Gas Price** The number of nonces that need to be replayed with a higher gas price.
+   **Unaccounted** unaccounted for nonces
 
-   **Next** this is the lowest nonce in the `incrementGasPrice` array
+   **Pending** pending nonces
     
 ## Install
 ```bash
@@ -79,9 +144,14 @@ cd tools-up-hammer
 npm i
 ```
 
-TODO version pinning
-
 ## Running
+
+The recommended way to run the tool is in two stages: 1) deployment, then 2) hammering. Deployments require synchronous activity otherwise lspFactory gets confused with nonces quickly.
+
+### Building Profiles
+
+When running the `cli` script, if the first argument is `build
+Inside the `scripts/` directory
 
 ### config.json
 

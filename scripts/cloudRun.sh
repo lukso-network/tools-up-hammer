@@ -1,22 +1,4 @@
 #!/bin/bash
-# docker build -t uphammer .
-# gcloud auth configure-docker
-# docker push HOSTNAME/PROJECT-ID/IMAGE:TAG
-# docker push gcr.io/uphammer-368613/uphammer
-
-
-# docker tag web-image gcr.io/my-project/web-site:v1.5
-# docker tag uphammer gcr.io/uphammer-368613/uphammer
-
-# THIS
-# docker build -t uphammer .
-# docker tag uphammer gcr.io/uphammer-368613/uphammer
-# docker push gcr.io/uphammer-368613/uphammer
-
-# gcloud beta run jobs create JOB_NAME --image IMAGE_URL OPTIONS
-# gcloud beta run jobs create uphammer --image gcr.io/uphammer-368613/uphammer
-
-
 
 if [[ -z "${UPHAMMER_MONITOR}" ]]; then
 	PROFILE=$((CLOUD_RUN_TASK_INDEX+1))
@@ -24,7 +6,7 @@ if [[ -z "${UPHAMMER_MONITOR}" ]]; then
 
 	while :
 	do
-		./cli.js profiles/profile$PROFILE.json presets/presets$PROFILE.json
+		./src/cli.js profiles/profile$PROFILE.json presets/presets$PROFILE.json
 		sleep 1
 	done
 	
